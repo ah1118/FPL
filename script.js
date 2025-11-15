@@ -97,7 +97,6 @@ async function getGoogleAccessToken() {
 }
 
 
-
 //--------------------------------------------
 // UPDATE GOOGLE SHEETS
 //--------------------------------------------
@@ -119,46 +118,28 @@ async function updateRange(range, values) {
 }
 
 
-
 //--------------------------------------------
-// UI INPUT PARSING
+// SIMPLE ONE-BUTTON INPUT PARSER
 //--------------------------------------------
 
-document.getElementById("processTextBtn").onclick = () => {
+function parseInput() {
     const raw = document.getElementById("mainInput").value.trim();
-
-    const lines = raw.split("-").slice(1, -1);
-
-    const container = document.getElementById("linesContainer");
-    container.innerHTML = "";
-
-    window.extractedLines = [];
-
-    lines.forEach((line, index) => {
-        const lbl = document.createElement("div");
-        lbl.className = "line-label";
-        lbl.innerText = `Line ${index + 1}:`;
-
-        const inp = document.createElement("textarea");
-        inp.className = "small-input";
-        inp.value = line.trim();
-
-        container.appendChild(lbl);
-        container.appendChild(inp);
-
-        window.extractedLines.push(inp);
-    });
-};
-
+    return raw.split("-").slice(1, -1).map(s => s.trim());
+}
 
 
 //--------------------------------------------
-// PROCESS ALL BUTTON LOGIC
+// PROCESS ALL (Button 1 → Button 8)
 //--------------------------------------------
 
 document.getElementById("processAllBtn").onclick = async () => {
 
-    const L = window.extractedLines.map(l => l.value.trim());
+    const L = parseInput();
+
+    if (L.length < 8) {
+        alert("❌ Error: Input must contain at least 8 lines separated by '-'");
+        return;
+    }
 
     //--------------------------------------------
     // BUTTON 1 — K17:Q17
@@ -169,7 +150,6 @@ document.getElementById("processAllBtn").onclick = async () => {
     //--------------------------------------------
     // BUTTON 2 — Y17:AF17
     //--------------------------------------------
-
     const ch1 = L[1][0] || "";
     const ch2 = L[1][1] || "";
     await updateRange("Y17:AF17", [[ch1, "", "", "", "", "", "", ch2]]);
@@ -178,7 +158,6 @@ document.getElementById("processAllBtn").onclick = async () => {
     //--------------------------------------------
     // BUTTON 3 — F21:I21 + N21
     //--------------------------------------------
-
     await updateRange("F21:I21", [[L[2][0], L[2][1], L[2][2], L[2][3]]]);
     await updateRange("N21", [[L[2][5] || ""]]);
 
@@ -186,27 +165,24 @@ document.getElementById("processAllBtn").onclick = async () => {
     //--------------------------------------------
     // BUTTON 4 — R21:AA21
     //--------------------------------------------
-
     await updateRange("R21:AA21", [[L[3].replace(/\//g, "     /     ")]]);
 
 
     //--------------------------------------------
     // BUTTON 5 — E25:H25 + N25:Q25
     //--------------------------------------------
-
     await updateRange("E25:H25", [[L[4][0], L[4][1], L[4][2], L[4][3]]]);
     await updateRange("N25:Q25", [[L[4][4], L[4][5], L[4][6], L[4][7]]]);
 
 
     //--------------------------------------------
-    // BUTTON 6 — FULL PYTHON LOGIC 1:1 EXACT
+    // BUTTON 6 — FULL COMPLEX PYTHON LOGIC
     //--------------------------------------------
 
     {
         let text = L[5].trim();
 
         let single = text.split(/\r?\n/).join(" ");
-
         let filteredWords = single.split(/\s+/).filter(w => w.length !== 6);
 
         let firstWord = filteredWords[0] || "";
@@ -215,19 +191,14 @@ document.getElementById("processAllBtn").onclick = async () => {
 
         let remainingWords = filteredWords.slice(1);
 
-        // Clear first
         await updateRange("N29:AJ30", [[""]]);
         await updateRange("A31:AJ31", [[""]]);
 
-        // B29:F29 → first 5 chars
         await updateRange("B29:F29", [firstFive.split("")]);
-
-        // H29:L29 → last 4 chars
         await updateRange("H29:L29", [lastFour.split("")]);
 
         if (remainingWords.length > 0) {
 
-            // FIRST PART (max 80 chars)
             let firstPart = [];
             let charCount = 0;
 
@@ -240,7 +211,6 @@ document.getElementById("processAllBtn").onclick = async () => {
 
             let firstPartStr = firstPart.join(" ");
 
-            // SECOND PART (max 130 chars)
             let afterFirst = remainingWords.slice(firstPart.length);
             let secondPartStr = "";
             let charCount2 = 0;
@@ -254,19 +224,15 @@ document.getElementById("processAllBtn").onclick = async () => {
 
             secondPartStr = secondPartStr.trim();
 
-            // OVERFLOW
             let overflowWords = afterFirst.slice(secondPartStr.split(/\s+/).length);
             let overflowStr = overflowWords.join(" ");
 
-            // WRITE FIRST PART → N29:AJ30
             if (firstPartStr)
                 await updateRange("N29:AJ30", [[firstPartStr]]);
 
-            // WRITE SECOND PART → A31:AJ31
             if (secondPartStr)
                 await updateRange("A31:AJ31", [[secondPartStr]]);
 
-            // WRITE OVERFLOW → A32:AJ32
             if (overflowStr)
                 await updateRange("A32:AJ32", [[overflowStr]]);
         }
@@ -289,13 +255,12 @@ document.getElementById("processAllBtn").onclick = async () => {
 
 
     //--------------------------------------------
-    // BUTTON 8 — SPLIT LONG TEXT (MAX 125 EACH)
+    // BUTTON 8 — SPLIT LONG TEXT (125 + 125)
     //--------------------------------------------
 
     {
         let text = L[7].trim();
         let single = text.split(/\r?\n/).join(" ");
-
         let words = single.split(/\s+/);
 
         let part1 = [];
@@ -331,11 +296,10 @@ document.getElementById("processAllBtn").onclick = async () => {
     //--------------------------------------------
     // OPEN GOOGLE SHEET
     //--------------------------------------------
-
     window.open(
         "https://docs.google.com/spreadsheets/d/1evPhDbDY8YuIL4XQ_pvimI-17EppUkCAUfFjxJ-Bgyw/edit?usp=sharing",
         "_blank"
     );
 
-    alert("All lines processed!");
+    alert("✅ All lines processed!");
 };
