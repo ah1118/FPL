@@ -38,13 +38,14 @@ const PDF_URL =
   `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?` +
   `format=pdf&` +
   `size=A4&` +
-  `portrait=true&` +          // <— PORTRAIT
-  `fitw=true&` +              // <— FIT TO WIDTH (forces 1 page)
-  `fit_h=1&fit_w=1&` +        // <— Force everything onto 1 page
+  `portrait=true&` +
+  `range=A1:AJ79&` +        // <--- THIS FIXES THE 4-PAGE PROBLEM
+  `gid=0&` +
+  `fitw=true&` +
   `sheetnames=false&printtitle=false&pagenumbers=false&` +
   `gridlines=false&` +
   `fzr=false&` +
-  `attachment=false`;         // <— Open in browser, not download
+  `attachment=false`;
 
   
 //--------------------------------------------
@@ -230,4 +231,5 @@ document.getElementById("processAllBtn").onclick = async () => {
         btn.classList.remove("disabled");
     }
 };
+
 
