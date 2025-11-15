@@ -13,29 +13,40 @@
 
 <body>
 
-    <!-- MAIN APP CONTAINER -->
+    <!-- Main App Box -->
     <div class="container">
 
-        <!-- Main Title inside the box -->
-        <h1 class="title">Flight Plan Auto Filler</h1>
+        <!-- App Title -->
+        <h1 class="title">✈️ Flight Plan Auto Filler</h1>
 
-        <!-- Input Label -->
-        <label class="label">Paste the ICAO flight plan from your OFP:</label>
+        <!-- Input Description -->
+        <label class="label">Paste the ICAO flight plan extracted from your OFP:</label>
 
-        <!-- Big Text Input -->
-        <textarea id="mainInput" class="big-input" placeholder="Paste your full text here..."></textarea>
+        <!-- Large Text Input -->
+        <textarea 
+            id="mainInput" 
+            class="big-input" 
+            placeholder="Example:
+(FPL-DAH111-IS
+-B738/M-SDE1FGHIJ1M1RWY/LB1
+-DAAE0600
+...)"
+        ></textarea>
 
-        <!-- Hidden Container (no previews) -->
+        <!-- Hidden preview container (kept for structure) -->
         <div id="linesContainer" class="lines-container"></div>
 
-        <!-- Single Button -->
-        <button id="processAllBtn" class="btn success-btn">Process All Lines</button>
+        <!-- Action Button -->
+        <button id="processAllBtn" class="btn success-btn">
+            Process All Lines
+        </button>
+
     </div>
 
-    <!-- Signature -->
+    <!-- Signature (bottom-right) -->
     <div class="signature">By Boutout Med Oussama</div>
 
-    <!-- JS -->
+    <!-- JavaScript Logic -->
     <script src="script.js"></script>
 
 </body>
