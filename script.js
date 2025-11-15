@@ -299,3 +299,36 @@ document.getElementById("processAllBtn").onclick = async () => {
 
     alert("All lines processed!");
 };
+
+
+/* --------------------------------------------------
+   Loading Spinner
+-------------------------------------------------- */
+.spinner {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 55px;
+    height: 55px;
+    margin-left: -27.5px;
+    margin-top: -27.5px;
+    border: 6px solid rgba(255,255,255,0.15);
+    border-top-color: #22c55e; /* green aviation color */
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+    z-index: 9999;
+}
+
+.hidden {
+    display: none;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Disable button while processing */
+.btn.disabled {
+    opacity: 0.55;
+    pointer-events: none;
+}
