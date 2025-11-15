@@ -1,7 +1,6 @@
 //--------------------------------------------
 // CONFIGURATION
 //--------------------------------------------
-
 const SERVICE_ACCOUNT_EMAIL = "fpl-838@ccccccc-9c0ca.iam.gserviceaccount.com";
 const PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
 MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDmsl/PRf49GbZo
@@ -36,20 +35,20 @@ const SPREADSHEET_ID = "1evPhDbDY8YuIL4XQ_pvimI-17EppUkCAUfFjxJ-Bgyw";
 
 
 //--------------------------------------------
-// JWT + GOOGLE TOKEN GENERATION
+// JWT + TOKEN
 //--------------------------------------------
-
 function base64url(source) {
-    let encoded = btoa(String.fromCharCode.apply(null, new Uint8Array(source)));
+    let encoded = btoa(String.fromCharCode(...new Uint8Array(source)));
     return encoded.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 async function importPrivateKey(pemKey) {
     const pem = pemKey.replace(/-----[^-]+-----/g, "").replace(/\n/g, "");
-    const binaryDer = Uint8Array.from(atob(pem), c => c.charCodeAt(0));
+    const binary = Uint8Array.from(atob(pem), x => x.charCodeAt(0));
+
     return crypto.subtle.importKey(
         "pkcs8",
-        binaryDer,
+        binary,
         { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
         true,
         ["sign"]
@@ -59,6 +58,7 @@ async function importPrivateKey(pemKey) {
 async function generateJWT() {
     const header = { alg: "RS256", typ: "JWT" };
     const now = Math.floor(Date.now() / 1000);
+
     const claim = {
         iss: SERVICE_ACCOUNT_EMAIL,
         scope: "https://www.googleapis.com/auth/spreadsheets",
@@ -69,38 +69,35 @@ async function generateJWT() {
 
     const encHeader = base64url(new TextEncoder().encode(JSON.stringify(header)));
     const encClaim = base64url(new TextEncoder().encode(JSON.stringify(claim)));
-    const toSign = encHeader + "." + encClaim;
+    const message = encHeader + "." + encClaim;
 
-    const privateKey = await importPrivateKey(PRIVATE_KEY);
+    const key = await importPrivateKey(PRIVATE_KEY);
 
     const signature = await crypto.subtle.sign(
         { name: "RSASSA-PKCS1-v1_5" },
-        privateKey,
-        new TextEncoder().encode(toSign)
+        key,
+        new TextEncoder().encode(message)
     );
 
-    const encSignature = base64url(new Uint8Array(signature));
-
-    return toSign + "." + encSignature;
+    return message + "." + base64url(new Uint8Array(signature));
 }
 
 async function getGoogleAccessToken() {
     const jwt = await generateJWT();
-    const response = await fetch("https://oauth2.googleapis.com/token", {
+
+    const res = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`
     });
 
-    const data = await response.json();
-    return data.access_token;
+    return (await res.json()).access_token;
 }
 
 
 //--------------------------------------------
-// UPDATE GOOGLE SHEETS
+// UPDATE GOOGLE SHEETS RANGE
 //--------------------------------------------
-
 async function updateRange(range, values) {
     const token = await getGoogleAccessToken();
 
@@ -119,187 +116,148 @@ async function updateRange(range, values) {
 
 
 //--------------------------------------------
-// SIMPLE ONE-BUTTON INPUT PARSER
+// PROCESS ALL (ONE BUTTON)
 //--------------------------------------------
-
-function parseInput() {
-    const raw = document.getElementById("mainInput").value.trim();
-    return raw.split("-").slice(1, -1).map(s => s.trim());
-}
-
-
-//--------------------------------------------
-// PROCESS ALL (Button 1 → Button 8)
-//--------------------------------------------
-
 document.getElementById("processAllBtn").onclick = async () => {
 
-    const L = parseInput();
+    const raw = document.getElementById("mainInput").value.trim();
 
-    if (L.length < 8) {
-        alert("❌ Error: Input must contain at least 8 lines separated by '-'");
-        return;
-    }
+    // Split input same as Python
+    const L = raw.split("-").slice(1, -1).map(x => x.trim());
 
-    //--------------------------------------------
+    //-------------------------
     // BUTTON 1 — K17:Q17
-    //--------------------------------------------
+    //-------------------------
     await updateRange("K17:Q17", [L[0].split("")]);
 
-
-    //--------------------------------------------
+    //-------------------------
     // BUTTON 2 — Y17:AF17
-    //--------------------------------------------
-    const ch1 = L[1][0] || "";
-    const ch2 = L[1][1] || "";
-    await updateRange("Y17:AF17", [[ch1, "", "", "", "", "", "", ch2]]);
+    //-------------------------
+    await updateRange("Y17:AF17", [[L[1][0] || "", "", "", "", "", "", "", L[1][1] || ""]]);
 
-
-    //--------------------------------------------
+    //-------------------------
     // BUTTON 3 — F21:I21 + N21
-    //--------------------------------------------
+    //-------------------------
     await updateRange("F21:I21", [[L[2][0], L[2][1], L[2][2], L[2][3]]]);
     await updateRange("N21", [[L[2][5] || ""]]);
 
-
-    //--------------------------------------------
+    //-------------------------
     // BUTTON 4 — R21:AA21
-    //--------------------------------------------
+    //-------------------------
     await updateRange("R21:AA21", [[L[3].replace(/\//g, "     /     ")]]);
 
-
-    //--------------------------------------------
+    //-------------------------
     // BUTTON 5 — E25:H25 + N25:Q25
-    //--------------------------------------------
+    //-------------------------
     await updateRange("E25:H25", [[L[4][0], L[4][1], L[4][2], L[4][3]]]);
     await updateRange("N25:Q25", [[L[4][4], L[4][5], L[4][6], L[4][7]]]);
 
-
-    //--------------------------------------------
-    // BUTTON 6 — FULL COMPLEX PYTHON LOGIC
-    //--------------------------------------------
-
+    //-------------------------
+    // BUTTON 6 — FULL PYTHON LOGIC
+    //-------------------------
     {
-        let text = L[5].trim();
-
+        let text = L[5];
         let single = text.split(/\r?\n/).join(" ");
-        let filteredWords = single.split(/\s+/).filter(w => w.length !== 6);
+        let words = single.split(/\s+/);
 
-        let firstWord = filteredWords[0] || "";
-        let firstFive = firstWord.substring(0, 5);
-        let lastFour = firstWord.slice(-4);
+        let filtered = words.filter(w => w.length !== 6);
 
-        let remainingWords = filteredWords.slice(1);
+        let fw = filtered[0] || "";
+        let firstFive = fw.substring(0, 5);
+        let lastFour = fw.slice(-4);
 
-        await updateRange("N29:AJ30", [[""]]);
-        await updateRange("A31:AJ31", [[""]]);
+        let rest = filtered.slice(1);
 
         await updateRange("B29:F29", [firstFive.split("")]);
         await updateRange("H29:L29", [lastFour.split("")]);
 
-        if (remainingWords.length > 0) {
+        // FIRST PART (≤80 chars)
+        let p1 = [];
+        let c1 = 0;
 
-            let firstPart = [];
-            let charCount = 0;
-
-            for (let w of remainingWords) {
-                if (charCount + w.length + 1 <= 80) {
-                    firstPart.push(w);
-                    charCount += w.length + 1;
-                } else break;
-            }
-
-            let firstPartStr = firstPart.join(" ");
-
-            let afterFirst = remainingWords.slice(firstPart.length);
-            let secondPartStr = "";
-            let charCount2 = 0;
-
-            for (let w of afterFirst) {
-                if (charCount2 + w.length + 1 <= 130) {
-                    secondPartStr += w + " ";
-                    charCount2 += w.length + 1;
-                } else break;
-            }
-
-            secondPartStr = secondPartStr.trim();
-
-            let overflowWords = afterFirst.slice(secondPartStr.split(/\s+/).length);
-            let overflowStr = overflowWords.join(" ");
-
-            if (firstPartStr)
-                await updateRange("N29:AJ30", [[firstPartStr]]);
-
-            if (secondPartStr)
-                await updateRange("A31:AJ31", [[secondPartStr]]);
-
-            if (overflowStr)
-                await updateRange("A32:AJ32", [[overflowStr]]);
+        for (let w of rest) {
+            if (c1 + w.length + 1 <= 80) {
+                p1.push(w);
+                c1 += w.length + 1;
+            } else break;
         }
+
+        let p1Str = p1.join(" ");
+
+        // SECOND PART (≤130 chars)
+        let rest2 = rest.slice(p1.length);
+        let p2 = [];
+        let c2 = 0;
+
+        for (let w of rest2) {
+            if (c2 + w.length + 1 <= 130) {
+                p2.push(w);
+                c2 += w.length + 1;
+            } else break;
+        }
+
+        let p2Str = p2.join(" ");
+
+        // OVERFLOW
+        let overflow = rest2.slice(p2.length).join(" ");
+
+        if (p1Str) await updateRange("N29:AJ30", [[p1Str]]);
+        if (p2Str) await updateRange("A31:AJ31", [[p2Str]]);
+        if (overflow) await updateRange("A32:AJ32", [[overflow]]);
     }
 
+    //-------------------------
+    // BUTTON 7 — 4 SEGMENTS
+    //-------------------------
+    await updateRange("E39:H39", [L[6].substring(0, 4).split("")]);
+    await updateRange("M39:P39", [L[6].substring(4, 8).split("")]);
+    await updateRange("U39:X39", [L[6].substring(9, 13).split("")]);
+    await updateRange("AD39:AG39", [L[6].substring(14, 18).split("")]);
 
-    //--------------------------------------------
-    // BUTTON 7 — 4 SEGMENTS OF 4 CHARS
-    //--------------------------------------------
-
-    let partA = L[6].substring(0, 4).split("");
-    let partB = L[6].substring(4, 8).split("");
-    let partC = L[6].substring(9, 13).split("");
-    let partD = L[6].substring(14, 18).split("");
-
-    await updateRange("E39:H39", [partA]);
-    await updateRange("M39:P39", [partB]);
-    await updateRange("U39:X39", [partC]);
-    await updateRange("AD39:AG39", [partD]);
-
-
-    //--------------------------------------------
-    // BUTTON 8 — SPLIT LONG TEXT (125 + 125)
-    //--------------------------------------------
-
+    //-------------------------
+    // BUTTON 8 — SPLIT 125 / 125
+    //-------------------------
     {
-        let text = L[7].trim();
+        let text = L[7];
         let single = text.split(/\r?\n/).join(" ");
         let words = single.split(/\s+/);
 
-        let part1 = [];
-        let p1chars = 0;
+        let p1 = [];
+        let c1 = 0;
 
         for (let w of words) {
-            if (p1chars + w.length + 1 <= 125) {
-                part1.push(w);
-                p1chars += w.length + 1;
+            if (c1 + w.length + 1 <= 125) {
+                p1.push(w);
+                c1 += w.length + 1;
             } else break;
         }
 
-        let part1Str = part1.join(" ");
+        let p1Str = p1.join(" ");
 
-        let remaining = words.slice(part1.length);
-        let part2 = [];
-        let p2chars = 0;
+        let rest = words.slice(p1.length);
+        let p2 = [];
+        let c2 = 0;
 
-        for (let w of remaining) {
-            if (p2chars + w.length + 1 <= 125) {
-                part2.push(w);
-                p2chars += w.length + 1;
+        for (let w of rest) {
+            if (c2 + w.length + 1 <= 125) {
+                p2.push(w);
+                c2 += w.length + 1;
             } else break;
         }
 
-        let part2Str = part2.join(" ");
+        let p2Str = p2.join(" ");
 
-        await updateRange("B43:AJ43", [[part1Str]]);
-        await updateRange("A44:AJ44", [[part2Str]]);
+        await updateRange("B43:AJ43", [[p1Str]]);
+        await updateRange("A44:AJ44", [[p2Str]]);
     }
 
-
-    //--------------------------------------------
+    //-------------------------
     // OPEN GOOGLE SHEET
-    //--------------------------------------------
+    //-------------------------
     window.open(
         "https://docs.google.com/spreadsheets/d/1evPhDbDY8YuIL4XQ_pvimI-17EppUkCAUfFjxJ-Bgyw/edit?usp=sharing",
         "_blank"
     );
 
-    alert("✅ All lines processed!");
+    alert("✓ All lines processed and written!");
 };
