@@ -37,7 +37,6 @@ const SPREADSHEET_ID = "1evPhDbDY8YuIL4XQ_pvimI-17EppUkCAUfFjxJ-Bgyw";
 //--------------------------------------------
 // JWT TOKEN GENERATION
 //--------------------------------------------
-
 function base64url(source) {
     let encoded = btoa(String.fromCharCode.apply(null, new Uint8Array(source)));
     return encoded.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -58,6 +57,7 @@ async function importPrivateKey(pemKey) {
 async function generateJWT() {
     const header = { alg: "RS256", typ: "JWT" };
     const now = Math.floor(Date.now() / 1000);
+
     const claim = {
         iss: SERVICE_ACCOUNT_EMAIL,
         scope: "https://www.googleapis.com/auth/spreadsheets",
@@ -68,17 +68,17 @@ async function generateJWT() {
 
     const encHeader = base64url(new TextEncoder().encode(JSON.stringify(header)));
     const encClaim = base64url(new TextEncoder().encode(JSON.stringify(claim)));
-    const toSign = encHeader + "." + encClaim;
+    const toSign = `${encHeader}.${encClaim}`;
 
-    const privateKey = await importPrivateKey(PRIVATE_KEY);
+    const key = await importPrivateKey(PRIVATE_KEY);
 
     const signature = await crypto.subtle.sign(
         { name: "RSASSA-PKCS1-v1_5" },
-        privateKey,
+        key,
         new TextEncoder().encode(toSign)
     );
 
-    return toSign + "." + base64url(new Uint8Array(signature));
+    return `${toSign}.${base64url(new Uint8Array(signature))}`;
 }
 
 async function getGoogleAccessToken() {
@@ -95,10 +95,8 @@ async function getGoogleAccessToken() {
 
 
 //--------------------------------------------
-// GOOGLE SHEET HELPERS
+// GOOGLE SHEETS HELPERS
 //--------------------------------------------
-
-// Write values
 async function updateRange(range, values) {
     const token = await getGoogleAccessToken();
 
@@ -115,7 +113,6 @@ async function updateRange(range, values) {
     );
 }
 
-// Clear only that range
 async function clearRange(range) {
     const token = await getGoogleAccessToken();
 
@@ -133,39 +130,35 @@ async function clearRange(range) {
 
 
 //--------------------------------------------
-// MAIN PROCESS BUTTON
+// PROCESS BUTTON
 //--------------------------------------------
-
 document.getElementById("processAllBtn").onclick = async () => {
 
-    // Parse input
     const raw = document.getElementById("mainInput").value.trim();
+
+    // Split by "-" tokens exactly like Python version
     const L = raw.split("-").slice(1, -1).map(s => s.trim());
 
 
     //--------------------------------------------
-    // BUTTON 1 — K17:Q17  (UPDATED 6-or-7 rule)
+    // BUTTON 1 — K17:Q17 (6→ '-', 7→ OK)
     //--------------------------------------------
-    await clearRange("K17:Q17");
-
     {
-        let txt = L[0].trim();
+        await clearRange("K17:Q17");
+
+        let txt = L[0];
         let arr = txt.split("");
 
         if (arr.length === 6) {
             arr.push("-");
         }
-        else if (arr.length === 7) {
-            // ok as-is
-        }
-        else {
-            alert("K17:Q17 must be exactly 6 or 7 characters.");
+        else if (arr.length !== 7) {
+            alert("K17:Q17 must be 6 or 7 characters only.");
             return;
         }
 
         await updateRange("K17:Q17", [arr]);
     }
-
 
 
     //--------------------------------------------
@@ -183,9 +176,9 @@ document.getElementById("processAllBtn").onclick = async () => {
     await clearRange("F21:I21");
     await clearRange("N21");
 
-    await updateRange("F21:I21", [
-        [L[2][0], L[2][1], L[2][2], L[2][3]]
-    ]);
+    await updateRange("F21:I21", [[
+        L[2][0], L[2][1], L[2][2], L[2][3]
+    ]]);
 
     await updateRange("N21", [[L[2][5] || ""]]);
 
@@ -194,7 +187,9 @@ document.getElementById("processAllBtn").onclick = async () => {
     // BUTTON 4 — R21:AA21
     //--------------------------------------------
     await clearRange("R21:AA21");
-    await updateRange("R21:AA21", [[L[3].replace(/\//g, "     /     ")]]);
+    await updateRange("R21:AA21", [[
+        L[3].replace(/\//g, "     /     ")
+    ]]);
 
 
     //--------------------------------------------
@@ -203,91 +198,104 @@ document.getElementById("processAllBtn").onclick = async () => {
     await clearRange("E25:H25");
     await clearRange("N25:Q25");
 
-    await updateRange("E25:H25", [
-        [L[4][0], L[4][1], L[4][2], L[4][3]]
-    ]);
+    await updateRange("E25:H25", [[
+        L[4][0], L[4][1], L[4][2], L[4][3]
+    ]]);
 
-    await updateRange("N25:Q25", [
-        [L[4][4], L[4][5], L[4][6], L[4][7]]
-    ]);
+    await updateRange("N25:Q25", [[
+        L[4][4], L[4][5], L[4][6], L[4][7]
+    ]]);
 
 
     //--------------------------------------------
-    // BUTTON 6 — full logic
+    // BUTTON 6 — Full text logic
     //--------------------------------------------
-
     await clearRange("B29:F29");
     await clearRange("H29:L29");
     await clearRange("N29:AJ30");
     await clearRange("A31:AJ31");
     await clearRange("A32:AJ32");
 
-    let text6 = L[5].replace(/\n/g, " ");
-    let words6 = text6.split(/\s+/).filter(w => w.length !== 6);
+    let t6 = L[5].replace(/\n/g, " ");
+    let words = t6.split(/\s+/).filter(w => w.length !== 6);
 
-    let fw = words6[0] || "";
+    let fw = words[0] || "";
     let first5 = fw.substring(0, 5).split("");
     let last4 = fw.slice(-4).split("");
 
     await updateRange("B29:F29", [first5]);
     await updateRange("H29:L29", [last4]);
 
-    let rem = words6.slice(1);
+    let rem = words.slice(1);
 
     if (rem.length > 0) {
-        let part1 = [];
-        let chars = 0;
+
+        // first part 80 chars
+        let p1 = [];
+        let c = 0;
         for (let w of rem) {
-            if (chars + w.length + 1 <= 80) {
-                part1.push(w);
-                chars += w.length + 1;
+            if (c + w.length + 1 <= 80) {
+                p1.push(w);
+                c += w.length + 1;
             } else break;
         }
-        let part1Str = part1.join(" ");
+        let p1Str = p1.join(" ");
 
-        let rem2 = rem.slice(part1.length);
-        let part2 = [];
-        let chars2 = 0;
+        // second part 130 chars
+        let rem2 = rem.slice(p1.length);
+        let p2 = [];
+        let c2 = 0;
 
         for (let w of rem2) {
-            if (chars2 + w.length + 1 <= 130) {
-                part2.push(w);
-                chars2 += w.length + 1;
+            if (c2 + w.length + 1 <= 130) {
+                p2.push(w);
+                c2 += w.length + 1;
             } else break;
         }
-        let part2Str = part2.join(" ");
 
-        let overflow = rem2.slice(part2.length).join(" ");
+        let p2Str = p2.join(" ");
+        let overflow = rem2.slice(p2.length).join(" ");
 
-        if (part1Str) await updateRange("N29:AJ30", [[part1Str]]);
-        if (part2Str) await updateRange("A31:AJ31", [[part2Str]]);
+        if (p1Str) await updateRange("N29:AJ30", [[p1Str]]);
+        if (p2Str) await updateRange("A31:AJ31", [[p2Str]]);
         if (overflow) await updateRange("A32:AJ32", [[overflow]]);
     }
 
 
-
     //--------------------------------------------
-    // BUTTON 7 — AAAA BBBB CCCC DDDD
+    // BUTTON 7 — AAAA BBBB CCCC (optional DDDD)
     //--------------------------------------------
     await clearRange("E39:H39");
     await clearRange("M39:P39");
     await clearRange("U39:X39");
     await clearRange("AD39:AG39");
 
-    let pA = L[6].substring(0, 4).split("");
-    let pB = L[6].substring(4, 8).split("");
-    let pC = L[6].substring(9, 13).split("");
-    let pD = L[6].substring(14, 18).split("");
+    let raw7 = L[6].replace(/\s+/g, "");
+    let groups = [];
 
-    await updateRange("E39:H39", [pA]);
-    await updateRange("M39:P39", [pB]);
-    await updateRange("U39:X39", [pC]);
-    await updateRange("AD39:AG39", [pD]);
+    // split into groups of 4 chars
+    for (let i = 0; i < raw7.length; i += 4) {
+        groups.push(raw7.substring(i, i + 4));
+    }
 
+    // if 3 groups only → add ----
+    if (groups.length === 3) {
+        groups.push("----");
+    }
+
+    let gA = (groups[0] || "    ").split("");
+    let gB = (groups[1] || "    ").split("");
+    let gC = (groups[2] || "    ").split("");
+    let gD = (groups[3] || "----").split("");
+
+    await updateRange("E39:H39", [gA]);
+    await updateRange("M39:P39", [gB]);
+    await updateRange("U39:X39", [gC]);
+    await updateRange("AD39:AG39", [gD]);
 
 
     //--------------------------------------------
-    // BUTTON 8 — long split
+    // BUTTON 8 — Long split 125 + 125
     //--------------------------------------------
     await clearRange("B43:AJ43");
     await clearRange("A44:AJ44");
@@ -295,26 +303,25 @@ document.getElementById("processAllBtn").onclick = async () => {
     let t8 = L[7].replace(/\n/g, " ");
     let w8 = t8.split(/\s+/);
 
-    let p1 = [];
-    let c8 = 0;
+    let p1_8 = [];
+    let cc8 = 0;
 
     for (let w of w8) {
-        if (c8 + w.length + 1 <= 125) {
-            p1.push(w);
-            c8 += w.length + 1;
+        if (cc8 + w.length + 1 <= 125) {
+            p1_8.push(w);
+            cc8 += w.length + 1;
         } else break;
     }
 
-    let p1Str = p1.join(" ");
-    let p2Str = w8.slice(p1.length).join(" ");
+    let p1_8_str = p1_8.join(" ");
+    let p2_8_str = w8.slice(p1_8.length).join(" ");
 
-    await updateRange("B43:AJ43", [[p1Str]]);
-    await updateRange("A44:AJ44", [[p2Str]]);
-
+    await updateRange("B43:AJ43", [[p1_8_str]]);
+    await updateRange("A44:AJ44", [[p2_8_str]]);
 
 
     //--------------------------------------------
-    // OPEN GOOGLE SHEET
+    // OPEN SHEET
     //--------------------------------------------
     window.open(
         "https://docs.google.com/spreadsheets/d/1evPhDbDY8YuIL4XQ_pvimI-17EppUkCAUfFjxJ-Bgyw/edit?usp=sharing",
