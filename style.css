@@ -1,116 +1,97 @@
-/* Global Dark Theme Styles */
+/* Global Dark Theme */
 body {
     margin: 0;
     padding: 0;
     font-family: "Segoe UI", Tahoma, sans-serif;
     background-color: #0f0f10;
-    color: #eeeeee;
+    color: #eee;
     display: flex;
     justify-content: center;
     align-items: flex-start;
     min-height: 100vh;
 }
 
-/* Main Container */
+/* Main Card */
 .container {
-    margin-top: 40px;
+    margin-top: 50px;
     width: 90%;
-    max-width: 900px;
+    max-width: 850px;
     background: #18181b;
-    padding: 30px;
+    padding: 35px;
     border-radius: 14px;
-    box-shadow: 0px 0px 25px rgba(0, 0, 0, 0.5);
+    box-shadow: 0px 0px 30px rgba(0, 0, 0, 0.55);
+    border: 1px solid #202024;
 }
 
 /* Title */
 .title {
-    font-size: 28px;
+    font-size: 30px;
     text-align: center;
     margin-bottom: 25px;
-    font-weight: bold;
-    color: #ffffff;
+    color: #fff;
+    font-weight: 600;
 }
 
 /* Label */
 .label {
     font-size: 15px;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
     display: block;
+    color: #cfcfcf;
 }
 
-/* Main Input Box */
+/* Main Input Area */
 .big-input {
     width: 100%;
-    height: 200px;
+    height: 240px;
     background: #121214;
-    color: #ffffff;
+    color: #fff;
     border: 1px solid #2a2a2f;
-    border-radius: 8px;
-    padding: 12px;
+    border-radius: 10px;
+    padding: 14px;
     font-size: 15px;
+    line-height: 1.5;
     resize: vertical;
     outline: none;
+    transition: 0.2s;
 }
 
 .big-input:focus {
     border-color: #4a8bfd;
-    box-shadow: 0px 0px 8px rgba(74,139,253,0.5);
+    box-shadow: 0px 0px 10px rgba(74, 139, 253, 0.55);
 }
 
-/* Buttons */
+/* Main Action Button */
 .btn {
     width: 100%;
-    padding: 12px;
-    margin-top: 20px;
+    padding: 14px;
+    margin-top: 25px;
     border: none;
-    border-radius: 8px;
-    font-size: 16px;
+    border-radius: 10px;
+    font-size: 17px;
     cursor: pointer;
-    transition: 0.2s;
+    transition: 0.25s;
+    font-weight: 500;
 }
 
-.primary-btn {
-    background: #2563eb;
-    color: white;
-}
-
-.primary-btn:hover {
-    background: #1d4fd8;
-}
-
+/* Process Button */
 .success-btn {
     background: #22c55e;
     color: white;
+    box-shadow: 0px 5px 15px rgba(34, 197, 94, 0.25);
 }
 
 .success-btn:hover {
     background: #16a34a;
+    box-shadow: 0px 6px 18px rgba(34, 197, 94, 0.35);
 }
 
-/* Lines container */
+/* Lines container (hidden now but kept for safety) */
 .lines-container {
-    margin-top: 25px;
+    display: none; /* hidden */
 }
 
-/* Individual line labels */
-.line-label {
-    font-size: 14px;
-    margin: 12px 0 5px 0;
-}
-
-/* Small text fields */
-.small-input {
-    width: 100%;
-    background: #161618;
-    color: #ffffff;
-    border: 1px solid #2a2a2f;
-    border-radius: 6px;
-    padding: 10px;
-    font-size: 14px;
-    outline: none;
-}
-
-.small-input:focus {
-    border-color: #4a8bfd;
-    box-shadow: 0 0 8px rgba(74,139,253,0.5);
+/* Hidden fields (not used but defined) */
+.line-label, .small-input {
+    display: none;
 }
