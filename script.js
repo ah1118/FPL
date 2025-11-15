@@ -39,14 +39,11 @@ const PDF_URL =
   `format=pdf&` +
   `size=A4&` +
   `portrait=true&` +
-  `range=A1:AJ79&` +        // <--- THIS FIXES THE 4-PAGE PROBLEM
-  `gid=0&` +
-  `fitw=true&` +
+  `scale=1&` +          // Fit to page
   `sheetnames=false&printtitle=false&pagenumbers=false&` +
   `gridlines=false&` +
   `fzr=false&` +
   `attachment=false`;
-
   
 //--------------------------------------------
 // JWT AUTH (FAST)
@@ -231,5 +228,6 @@ document.getElementById("processAllBtn").onclick = async () => {
         btn.classList.remove("disabled");
     }
 };
+
 
 
