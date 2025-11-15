@@ -1,0 +1,116 @@
+/* Global Dark Theme Styles */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    background-color: #0f0f10;
+    color: #eeeeee;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+}
+
+/* Main Container */
+.container {
+    margin-top: 40px;
+    width: 90%;
+    max-width: 900px;
+    background: #18181b;
+    padding: 30px;
+    border-radius: 14px;
+    box-shadow: 0px 0px 25px rgba(0, 0, 0, 0.5);
+}
+
+/* Title */
+.title {
+    font-size: 28px;
+    text-align: center;
+    margin-bottom: 25px;
+    font-weight: bold;
+    color: #ffffff;
+}
+
+/* Label */
+.label {
+    font-size: 15px;
+    margin-bottom: 8px;
+    display: block;
+}
+
+/* Main Input Box */
+.big-input {
+    width: 100%;
+    height: 200px;
+    background: #121214;
+    color: #ffffff;
+    border: 1px solid #2a2a2f;
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 15px;
+    resize: vertical;
+    outline: none;
+}
+
+.big-input:focus {
+    border-color: #4a8bfd;
+    box-shadow: 0px 0px 8px rgba(74,139,253,0.5);
+}
+
+/* Buttons */
+.btn {
+    width: 100%;
+    padding: 12px;
+    margin-top: 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.primary-btn {
+    background: #2563eb;
+    color: white;
+}
+
+.primary-btn:hover {
+    background: #1d4fd8;
+}
+
+.success-btn {
+    background: #22c55e;
+    color: white;
+}
+
+.success-btn:hover {
+    background: #16a34a;
+}
+
+/* Lines container */
+.lines-container {
+    margin-top: 25px;
+}
+
+/* Individual line labels */
+.line-label {
+    font-size: 14px;
+    margin: 12px 0 5px 0;
+}
+
+/* Small text fields */
+.small-input {
+    width: 100%;
+    background: #161618;
+    color: #ffffff;
+    border: 1px solid #2a2a2f;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 14px;
+    outline: none;
+}
+
+.small-input:focus {
+    border-color: #4a8bfd;
+    box-shadow: 0 0 8px rgba(74,139,253,0.5);
+}
