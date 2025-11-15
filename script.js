@@ -33,6 +33,12 @@ MLSXljhmQdiag5T2cLZJ5NxxVU8PFlMbcOvMnIJXQA60V8KeUOqKYBfSxL8K6NBn
 
 const SPREADSHEET_ID = "1evPhDbDY8YuIL4XQ_pvimI-17EppUkCAUfFjxJ-Bgyw";
 
+// PDF preview (A4, fit to width, no sheet names, no download)
+const PDF_URL =
+  `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?` +
+  `format=pdf&size=A4&portrait=false&fitw=true&sheetnames=false` +
+  `&printtitle=false&pagenumbers=false&gridlines=false&attachment=false`;
+
 
 //--------------------------------------------
 // JWT AUTH (FAST)
@@ -45,17 +51,16 @@ function base64url(buffer) {
 async function importPrivateKey(pem) {
     const stripped = pem.replace(/-----[^-]+-----/g, "").replace(/\n/g, "");
     const der = Uint8Array.from(atob(stripped), c => c.charCodeAt(0));
-    return crypto.subtle.importKey(
-        "pkcs8", der,
+    return crypto.subtle.importKey("pkcs8", der,
         { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
         true, ["sign"]
     );
 }
 
 async function getAccessToken() {
-    const header = { alg: "RS256", typ: "JWT" };
     const now = Math.floor(Date.now() / 1000);
 
+    const header = { alg: "RS256", typ: "JWT" };
     const claim = {
         iss: SERVICE_ACCOUNT_EMAIL,
         scope: "https://www.googleapis.com/auth/spreadsheets",
@@ -66,16 +71,16 @@ async function getAccessToken() {
 
     const encHeader = base64url(new TextEncoder().encode(JSON.stringify(header)));
     const encClaim = base64url(new TextEncoder().encode(JSON.stringify(claim)));
-    const toSign = `${encHeader}.${encClaim}`;
+    const payload = `${encHeader}.${encClaim}`;
 
     const key = await importPrivateKey(PRIVATE_KEY);
     const signature = await crypto.subtle.sign(
         { name: "RSASSA-PKCS1-v1_5" },
         key,
-        new TextEncoder().encode(toSign)
+        new TextEncoder().encode(payload)
     );
 
-    const jwt = `${toSign}.${base64url(new Uint8Array(signature))}`;
+    const jwt = `${payload}.${base64url(new Uint8Array(signature))}`;
 
     const res = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
@@ -100,16 +105,10 @@ document.getElementById("processAllBtn").onclick = async () => {
 
     try {
         const raw = document.getElementById("mainInput").value.trim();
-
-        // SPLIT TEXT
-        const L = raw.split("-").slice(1, -1).map(v => v.trim());
-
-        //
-        // -------- PARSE ALL VALUES ONCE --------
-        //
+        const L = raw.split("-").slice(1, -1).map(t => t.trim());
 
         // BUTTON 1
-        let txt1 = L[0].trim().split("");
+        let txt1 = L[0].split("");
         if (txt1.length === 6) txt1.push("-");
         if (txt1.length !== 7) throw new Error("Invalid K17:Q17 length");
 
@@ -136,12 +135,17 @@ document.getElementById("processAllBtn").onclick = async () => {
 
         let rem = words6.slice(1);
         let p1 = [], len1 = 0;
-        rem.forEach(w => { if (len1 + w.length + 1 <= 80) { p1.push(w); len1 += w.length + 1; } });
+
+        for (let w of rem) {
+            if (len1 + w.length + 1 <= 80) { p1.push(w); len1 += w.length + 1; }
+        }
         let p1Str = p1.join(" ");
         let rem2 = rem.slice(p1.length);
 
         let p2 = [], len2 = 0;
-        rem2.forEach(w => { if (len2 + w.length + 1 <= 130) { p2.push(w); len2 += w.length + 1; } });
+        for (let w of rem2) {
+            if (len2 + w.length + 1 <= 130) { p2.push(w); len2 += w.length + 1; }
+        }
         let p2Str = p2.join(" ");
         let overflow = rem2.slice(p2.length).join(" ");
 
@@ -157,7 +161,10 @@ document.getElementById("processAllBtn").onclick = async () => {
         let t8 = L[7].replace(/\n/g, " ");
         let w8 = t8.split(/\s+/);
         let s1 = [], len8 = 0;
-        w8.forEach(w => { if (len8 + w.length + 1 <= 125) { s1.push(w); len8 += w.length + 1; } });
+
+        for (let w of w8) {
+            if (len8 + w.length + 1 <= 125) { s1.push(w); len8 += w.length + 1; }
+        }
         const s1Str = s1.join(" ");
         const s2Str = w8.slice(s1.length).join(" ");
 
@@ -165,56 +172,34 @@ document.getElementById("processAllBtn").onclick = async () => {
         const enduranceMatch = raw.match(/-E\/(\d{4})/);
         const endurance = enduranceMatch ? enduranceMatch[1].split("") : ["","","",""];
 
-
-        //
-        // --------- BUILD ONE BATCH UPDATE ---------
-        //
-
+        // BATCH UPDATE
         const token = await getAccessToken();
 
         const batch = {
             valueInputOption: "RAW",
             data: [
-                // BUTTON 1
                 { range: "K17:Q17", values: [txt1] },
-
-                // BUTTON 2
                 { range: "Y17:AF17", values: [b2] },
-
-                // BUTTON 3
                 { range: "F21:I21", values: [b3_1] },
                 { range: "N21", values: [b3_2] },
-
-                // BUTTON 4
                 { range: "R21:AA21", values: [b4] },
-
-                // BUTTON 5
                 { range: "E25:H25", values: [b5_1] },
                 { range: "N25:Q25", values: [b5_2] },
-
-                // BUTTON 6
                 { range: "B29:F29", values: [b6_first5] },
                 { range: "H29:L29", values: [b6_last4] },
-                { range: "N29:AJ30", values: [ [p1Str] ] },
-                { range: "A31:AJ31", values: [ [p2Str] ] },
-                { range: "A32:AJ32", values: [ [overflow] ] },
-
-                // BUTTON 7
+                { range: "N29:AJ30", values: [[p1Str]] },
+                { range: "A31:AJ31", values: [[p2Str]] },
+                { range: "A32:AJ32", values: [[overflow]] },
                 { range: "E39:H39", values: [b7a] },
                 { range: "M39:P39", values: [b7b] },
                 { range: "U39:X39", values: [b7c] },
                 { range: "AD39:AG39", values: [b7d] },
-
-                // BUTTON 8
-                { range: "B43:AJ43", values: [ [s1Str] ] },
-                { range: "A44:AJ44", values: [ [s2Str] ] },
-
-                // BUTTON 9 (E/HHMM)
+                { range: "B43:AJ43", values: [[s1Str]] },
+                { range: "A44:AJ44", values: [[s2Str]] },
                 { range: "D55:G55", values: [endurance] },
             ]
         };
 
-        // SEND ONE SINGLE REQUEST
         await fetch(
             `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchUpdate`,
             {
@@ -227,10 +212,8 @@ document.getElementById("processAllBtn").onclick = async () => {
             }
         );
 
-        window.open(
-            `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit?usp=sharing`,
-            "_blank"
-        );
+        // OPEN PDF INLINE
+        window.open(PDF_URL, "_blank");
 
     } catch (err) {
         alert("ERROR: " + err.message);
