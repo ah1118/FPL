@@ -306,9 +306,6 @@ document.getElementById("processAllBtn").onclick = async () => {
             "_blank"
         );
 
-        alert("All lines processed successfully!");
-
-
     } catch (err) {
         console.error(err);
         alert("Error: " + err.message);
@@ -319,3 +316,4 @@ document.getElementById("processAllBtn").onclick = async () => {
         btn.classList.remove("disabled");
     }
 };
+
