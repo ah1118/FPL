@@ -149,21 +149,21 @@ body {
     bottom: 18px;
     right: 22px;
 
-    font-size: 13px;
-    color: #bfc3c6;
-    font-weight: 500;
-    letter-spacing: 0.4px;
+    font-size: 15px;            /* increased from 13 */
+    font-weight: 600;           /* more professional */
+    letter-spacing: 0.5px;
 
-    padding: 6px 14px;
-    border-radius: 8px;
+    padding: 8px 18px;          /* bigger badge */
+    border-radius: 10px;
 
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.10);
-    backdrop-filter: blur(4px);
+    color: #e6e8eb;             /* slightly brighter */
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(6px);
 
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.45);
 
-    opacity: 0.75;
+    opacity: 0.85;
     user-select: none;
     transition: 0.25s ease;
 }
@@ -171,7 +171,8 @@ body {
 .signature:hover {
     opacity: 1;
     color: #ffffff;
-    border-color: rgba(255, 255, 255, 0.18);
-    background: rgba(255, 255, 255, 0.08);
     transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.10);
+    border-color: rgba(255, 255, 255, 0.22);
+    box-shadow: 0 0 16px rgba(0, 0, 0, 0.55);
 }
