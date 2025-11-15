@@ -36,7 +36,7 @@ const SPREADSHEET_ID = "1evPhDbDY8YuIL4XQ_pvimI-17EppUkCAUfFjxJ-Bgyw";
 // PDF preview (A4, fit to width, no sheet names, no download)
 const PDF_URL =
   `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?` +
-  `format=pdf&size=A4&portrait=false&fitw=true&sheetnames=false` +
+  `format=pdf&size=A4&portrait=true&fitw=true&sheetnames=false` +
   `&printtitle=false&pagenumbers=false&gridlines=false&attachment=false`;
 
 
@@ -223,3 +223,4 @@ document.getElementById("processAllBtn").onclick = async () => {
         btn.classList.remove("disabled");
     }
 };
+
