@@ -182,7 +182,6 @@ document.getElementById("processAllBtn").onclick = async () => {
         await updateRange("F21:I21", [[L[2][0], L[2][1], L[2][2], L[2][3]]]);
         await updateRange("N21", [[L[2][5] || ""]]);
 
-
         //----------------------------------------------------
         // BUTTON 4 — R21:AA21
         //----------------------------------------------------
@@ -250,7 +249,6 @@ document.getElementById("processAllBtn").onclick = async () => {
         }
 
 
-
         //----------------------------------------------------
         // BUTTON 7 — AAAA BBBB CCCC (optional DDDD)
         //----------------------------------------------------
@@ -272,7 +270,6 @@ document.getElementById("processAllBtn").onclick = async () => {
         await updateRange("M39:P39", [gB]);
         await updateRange("U39:X39", [gC]);
         await updateRange("AD39:AG39", [gD]);
-
 
 
         //----------------------------------------------------
@@ -298,21 +295,20 @@ document.getElementById("processAllBtn").onclick = async () => {
 
 
         //----------------------------------------------------
-        // BUTTON 9 — Extract E/XXXX → D55:E55:F55:G55
+        // BUTTON 9 — Extract E/HHMM → D55:E55:F55:G55
         //----------------------------------------------------
         await clearRange("D55:G55");
 
-        // L[5] contains the line starting with "-E/"
-        let eMatch = L[5].match(/E\/(\d{4})/);
+        // Search in full raw text for "-E/XXXX"
+        const eMatch = raw.match(/-E\/(\d{4})/);
 
         if (eMatch) {
-            let digits = eMatch[1].split("");  // ["0","3","0","6"]
+            const digits = eMatch[1].split(""); // ["0","3","0","6"]
             await updateRange("D55:G55", [digits]);
         } else {
-            // If no 4-digit value found, leave blank (no error)
+            // No endurance found → keep cells blank
             await updateRange("D55:G55", [["", "", "", ""]]);
         }
-
 
 
         //----------------------------------------------------
@@ -333,6 +329,3 @@ document.getElementById("processAllBtn").onclick = async () => {
         btn.classList.remove("disabled");
     }
 };
-
-
-
