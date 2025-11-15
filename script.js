@@ -35,28 +35,24 @@ const SPREADSHEET_ID = "1evPhDbDY8YuIL4XQ_pvimI-17EppUkCAUfFjxJ-Bgyw";
 
 
 //--------------------------------------------
-// FAST AUTH — TOKEN CACHING
+// JWT AUTH (FAST)
 //--------------------------------------------
-let cachedToken = null;
-let cachedTokenExpiry = 0;
-
-function base64url(source) {
-    let encoded = btoa(String.fromCharCode.apply(null, new Uint8Array(source)));
-    return encoded.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+function base64url(buffer) {
+    return btoa(String.fromCharCode(...buffer))
+        .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-async function importPrivateKey(pemKey) {
-    const pem = pemKey.replace(/-----[^-]+-----/g, "").replace(/\n/g, "");
-    const binaryDer = Uint8Array.from(atob(pem), c => c.charCodeAt(0));
+async function importPrivateKey(pem) {
+    const stripped = pem.replace(/-----[^-]+-----/g, "").replace(/\n/g, "");
+    const der = Uint8Array.from(atob(stripped), c => c.charCodeAt(0));
     return crypto.subtle.importKey(
-        "pkcs8",
-        binaryDer,
+        "pkcs8", der,
         { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
         true, ["sign"]
     );
 }
 
-async function generateJWT() {
+async function getAccessToken() {
     const header = { alg: "RS256", typ: "JWT" };
     const now = Math.floor(Date.now() / 1000);
 
@@ -69,27 +65,17 @@ async function generateJWT() {
     };
 
     const encHeader = base64url(new TextEncoder().encode(JSON.stringify(header)));
-    const encClaim  = base64url(new TextEncoder().encode(JSON.stringify(claim)));
-    const toSign    = encHeader + "." + encClaim;
+    const encClaim = base64url(new TextEncoder().encode(JSON.stringify(claim)));
+    const toSign = `${encHeader}.${encClaim}`;
 
-    const privateKey = await importPrivateKey(PRIVATE_KEY);
-    const signature  = await crypto.subtle.sign(
+    const key = await importPrivateKey(PRIVATE_KEY);
+    const signature = await crypto.subtle.sign(
         { name: "RSASSA-PKCS1-v1_5" },
-        privateKey,
+        key,
         new TextEncoder().encode(toSign)
     );
 
-    return toSign + "." + base64url(new Uint8Array(signature));
-}
-
-async function getGoogleAccessToken() {
-    const now = Date.now() / 1000;
-
-    // Reuse token
-    if (cachedToken && now < cachedTokenExpiry) return cachedToken;
-
-    // Else generate a new one
-    const jwt = await generateJWT();
+    const jwt = `${toSign}.${base64url(new Uint8Array(signature))}`;
 
     const res = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
@@ -97,52 +83,12 @@ async function getGoogleAccessToken() {
         body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`
     });
 
-    const data = await res.json();
-
-    cachedToken = data.access_token;
-    cachedTokenExpiry = now + 3500; // safe margin
-
-    return cachedToken;
+    return (await res.json()).access_token;
 }
 
 
 //--------------------------------------------
-// SHEET OPERATIONS
-//--------------------------------------------
-async function updateRange(range, values) {
-    const token = await getGoogleAccessToken();
-
-    await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}?valueInputOption=RAW`,
-        {
-            method: "PUT",
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ values })
-        }
-    );
-}
-
-async function clearRange(range) {
-    const token = await getGoogleAccessToken();
-
-    await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}:clear`,
-        {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${token}`,
-                "Content-Type": "application/json"
-            }
-        }
-    );
-}
-
-
-//--------------------------------------------
-// PROCESS ALL BUTTON + SPINNER
+// PROCESS BUTTON
 //--------------------------------------------
 const btn = document.getElementById("processAllBtn");
 const spinner = document.getElementById("spinner");
@@ -154,171 +100,141 @@ document.getElementById("processAllBtn").onclick = async () => {
 
     try {
         const raw = document.getElementById("mainInput").value.trim();
-        const L = raw.split("-").slice(1, -1).map(t => t.trim());
 
+        // SPLIT TEXT
+        const L = raw.split("-").slice(1, -1).map(v => v.trim());
 
-        //----------------------------------------------------
-        // BUTTON 1 — K17:Q17
-        //----------------------------------------------------
-        await clearRange("K17:Q17");
+        //
+        // -------- PARSE ALL VALUES ONCE --------
+        //
 
-        {
-            let txt = L[0].trim();
-            let arr = txt.split("");
+        // BUTTON 1
+        let txt1 = L[0].trim().split("");
+        if (txt1.length === 6) txt1.push("-");
+        if (txt1.length !== 7) throw new Error("Invalid K17:Q17 length");
 
-            if (arr.length === 6) arr.push("-");
-            else if (arr.length !== 7) {
-                alert("K17:Q17 must be 6 or 7 characters.");
-                throw new Error("Invalid length");
-            }
+        // BUTTON 2
+        const b2 = [L[1][0] || "", "", "", "", "", "", "", L[1][1] || ""];
 
-            await updateRange("K17:Q17", [arr]);
-        }
+        // BUTTON 3
+        const b3_1 = [L[2][0], L[2][1], L[2][2], L[2][3]];
+        const b3_2 = [L[2][5] || ""];
 
+        // BUTTON 4
+        const b4 = [L[3].replace(/\//g, "     /     ")];
 
-        //----------------------------------------------------
-        // BUTTON 2 — Y17:AF17
-        //----------------------------------------------------
-        await clearRange("Y17:AF17");
+        // BUTTON 5
+        const b5_1 = [L[4][0], L[4][1], L[4][2], L[4][3]];
+        const b5_2 = [L[4][4], L[4][5], L[4][6], L[4][7]];
 
-        const c1 = L[1][0] || "";
-        const c2 = L[1][1] || "";
-
-        await updateRange("Y17:AF17", [[c1, "", "", "", "", "", "", c2]]);
-
-
-        //----------------------------------------------------
-        // BUTTON 3 — F21:I21 + N21
-        //----------------------------------------------------
-        await clearRange("F21:I21");
-        await clearRange("N21");
-
-        await updateRange("F21:I21", [[L[2][0], L[2][1], L[2][2], L[2][3]]]);
-        await updateRange("N21", [[L[2][5] || ""]]);
-
-
-        //----------------------------------------------------
-        // BUTTON 4 — R21:AA21
-        //----------------------------------------------------
-        await clearRange("R21:AA21");
-        await updateRange("R21:AA21", [
-            [L[3].replace(/\//g, "     /     ")]
-        ]);
-
-
-        //----------------------------------------------------
-        // BUTTON 5 — E25:H25 + N25:Q25
-        //----------------------------------------------------
-        await clearRange("E25:H25");
-        await clearRange("N25:Q25");
-
-        await updateRange("E25:H25", [[L[4][0], L[4][1], L[4][2], L[4][3]]]);
-        await updateRange("N25:Q25", [[L[4][4], L[4][5], L[4][6], L[4][7]]]);
-
-
-        //----------------------------------------------------
-        // BUTTON 6 — Paragraph Splitting
-        //----------------------------------------------------
-        await clearRange("B29:F29");
-        await clearRange("H29:L29");
-        await clearRange("N29:AJ30");
-        await clearRange("A31:AJ31");
-        await clearRange("A32:AJ32");
-
+        // BUTTON 6
         let t6 = L[5].replace(/\n/g, " ");
         let words6 = t6.split(/\s+/).filter(w => w.length !== 6);
-
         let fw = words6[0] || "";
-        let first5 = fw.substring(0, 5).split("");
-        let last4  = fw.slice(-4).split("");
-
-        await updateRange("B29:F29", [first5]);
-        await updateRange("H29:L29", [last4]);
+        const b6_first5 = fw.substring(0, 5).split("");
+        const b6_last4 = fw.slice(-4).split("");
 
         let rem = words6.slice(1);
+        let p1 = [], len1 = 0;
+        rem.forEach(w => { if (len1 + w.length + 1 <= 80) { p1.push(w); len1 += w.length + 1; } });
+        let p1Str = p1.join(" ");
+        let rem2 = rem.slice(p1.length);
 
-        if (rem.length) {
-            let p1 = [], c1len = 0;
-            for (let w of rem) {
-                if (c1len + w.length + 1 <= 80) { p1.push(w); c1len += w.length + 1; }
-                else break;
-            }
-            let rem2 = rem.slice(p1.length);
+        let p2 = [], len2 = 0;
+        rem2.forEach(w => { if (len2 + w.length + 1 <= 130) { p2.push(w); len2 += w.length + 1; } });
+        let p2Str = p2.join(" ");
+        let overflow = rem2.slice(p2.length).join(" ");
 
-            let p2 = [], c2len = 0;
-            for (let w of rem2) {
-                if (c2len + w.length + 1 <= 130) { p2.push(w); c2len += w.length + 1; }
-                else break;
-            }
-
-            let overflow = rem2.slice(p2.length).join(" ");
-
-            if (p1.length) await updateRange("N29:AJ30", [[p1.join(" ")]]);
-            if (p2.length) await updateRange("A31:AJ31", [[p2.join(" ")]]);
-            if (overflow) await updateRange("A32:AJ32", [[overflow]]);
-        }
-
-
-        //----------------------------------------------------
-        // BUTTON 7 — AAAA BBBB CCCC DDDD
-        //----------------------------------------------------
-        await clearRange("E39:H39");
-        await clearRange("M39:P39");
-        await clearRange("U39:X39");
-        await clearRange("AD39:AG39");
-
+        // BUTTON 7
         let raw7 = L[6].replace(/[^A-Za-z0-9]/g, "");
         while (raw7.length < 16) raw7 += "-";
+        const b7a = raw7.substring(0, 4).split("");
+        const b7b = raw7.substring(4, 8).split("");
+        const b7c = raw7.substring(8, 12).split("");
+        const b7d = raw7.substring(12, 16).split("");
 
-        await updateRange("E39:H39",  [raw7.substring(0, 4).split("")]);
-        await updateRange("M39:P39",  [raw7.substring(4, 8).split("")]);
-        await updateRange("U39:X39",  [raw7.substring(8,12).split("")]);
-        await updateRange("AD39:AG39", [raw7.substring(12,16).split("")]);
-
-
-        //----------------------------------------------------
-        // BUTTON 8 — Long Text 125 / 125
-        //----------------------------------------------------
-        await clearRange("B43:AJ43");
-        await clearRange("A44:AJ44");
-
+        // BUTTON 8
         let t8 = L[7].replace(/\n/g, " ");
         let w8 = t8.split(/\s+/);
+        let s1 = [], len8 = 0;
+        w8.forEach(w => { if (len8 + w.length + 1 <= 125) { s1.push(w); len8 += w.length + 1; } });
+        const s1Str = s1.join(" ");
+        const s2Str = w8.slice(s1.length).join(" ");
 
-        let s1 = [], clen8 = 0;
-        for (let w of w8) {
-            if (clen8 + w.length + 1 <= 125) { s1.push(w); clen8 += w.length + 1; }
-            else break;
-        }
-
-        await updateRange("B43:AJ43", [[s1.join(" ")]]);
-        await updateRange("A44:AJ44", [[w8.slice(s1.length).join(" ")]]);
-
-
-        //----------------------------------------------------
-        // BUTTON 9 — Extract E/XXXX → D55:E55:F55:G55
-        //----------------------------------------------------
-        await clearRange("D55:G55");
-
-        const eMatch = raw.match(/-E\/(\d{4})/);
-        if (eMatch) {
-            await updateRange("D55:G55", [eMatch[1].split("")]);
-        } else {
-            await updateRange("D55:G55", [["","","",""]]);
-        }
+        // BUTTON 9 (E/XXXX)
+        const enduranceMatch = raw.match(/-E\/(\d{4})/);
+        const endurance = enduranceMatch ? enduranceMatch[1].split("") : ["","","",""];
 
 
-        //----------------------------------------------------
-        // OPEN SHEET
-        //----------------------------------------------------
+        //
+        // --------- BUILD ONE BATCH UPDATE ---------
+        //
+
+        const token = await getAccessToken();
+
+        const batch = {
+            valueInputOption: "RAW",
+            data: [
+                // BUTTON 1
+                { range: "K17:Q17", values: [txt1] },
+
+                // BUTTON 2
+                { range: "Y17:AF17", values: [b2] },
+
+                // BUTTON 3
+                { range: "F21:I21", values: [b3_1] },
+                { range: "N21", values: [b3_2] },
+
+                // BUTTON 4
+                { range: "R21:AA21", values: [b4] },
+
+                // BUTTON 5
+                { range: "E25:H25", values: [b5_1] },
+                { range: "N25:Q25", values: [b5_2] },
+
+                // BUTTON 6
+                { range: "B29:F29", values: [b6_first5] },
+                { range: "H29:L29", values: [b6_last4] },
+                { range: "N29:AJ30", values: [ [p1Str] ] },
+                { range: "A31:AJ31", values: [ [p2Str] ] },
+                { range: "A32:AJ32", values: [ [overflow] ] },
+
+                // BUTTON 7
+                { range: "E39:H39", values: [b7a] },
+                { range: "M39:P39", values: [b7b] },
+                { range: "U39:X39", values: [b7c] },
+                { range: "AD39:AG39", values: [b7d] },
+
+                // BUTTON 8
+                { range: "B43:AJ43", values: [ [s1Str] ] },
+                { range: "A44:AJ44", values: [ [s2Str] ] },
+
+                // BUTTON 9 (E/HHMM)
+                { range: "D55:G55", values: [endurance] },
+            ]
+        };
+
+        // SEND ONE SINGLE REQUEST
+        await fetch(
+            `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values:batchUpdate`,
+            {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(batch)
+            }
+        );
+
         window.open(
-            "https://docs.google.com/spreadsheets/d/1evPhDbDY8YuIL4XQ_pvimI-17EppUkCAUfFjxJ-Bgyw/edit?usp=sharing",
+            `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit?usp=sharing`,
             "_blank"
         );
 
     } catch (err) {
+        alert("ERROR: " + err.message);
         console.error(err);
-        alert("Error: " + err.message);
     } finally {
         spinner.classList.add("hidden");
         btn.classList.remove("disabled");
