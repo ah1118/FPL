@@ -38,11 +38,13 @@ const PDF_URL =
   `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?` +
   `format=pdf&` +
   `size=A4&` +
-  `portrait=false&` +
-  `fitw=true&` +
-  `top_margin=0.25&bottom_margin=0.25&left_margin=0.25&right_margin=0.25&` +
-  `sheetnames=false&printtitle=false&pagenumbers=false&gridlines=false&` +
-  `fzr=FALSE&horizontal_alignment=CENTER`;
+  `portrait=true&` +          // <— PORTRAIT
+  `fitw=true&` +              // <— FIT TO WIDTH (forces 1 page)
+  `fit_h=1&fit_w=1&` +        // <— Force everything onto 1 page
+  `sheetnames=false&printtitle=false&pagenumbers=false&` +
+  `gridlines=false&` +
+  `fzr=false&` +
+  `attachment=false`;         // <— Open in browser, not download
 
   
 //--------------------------------------------
@@ -228,3 +230,4 @@ document.getElementById("processAllBtn").onclick = async () => {
         btn.classList.remove("disabled");
     }
 };
+
