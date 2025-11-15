@@ -1,4 +1,6 @@
-/* Global Dark Theme */
+/* --------------------------------------------------
+   Global Dark Theme
+-------------------------------------------------- */
 body {
     margin: 0;
     padding: 0;
@@ -11,7 +13,9 @@ body {
     min-height: 100vh;
 }
 
-/* Main Card */
+/* --------------------------------------------------
+   Main Card
+-------------------------------------------------- */
 .container {
     margin-top: 50px;
     width: 90%;
@@ -23,7 +27,9 @@ body {
     border: 1px solid #202024;
 }
 
-/* Title */
+/* --------------------------------------------------
+   Page Title / Card Title
+-------------------------------------------------- */
 .title {
     font-size: 30px;
     text-align: center;
@@ -32,7 +38,9 @@ body {
     font-weight: 600;
 }
 
-/* Label */
+/* --------------------------------------------------
+   Label
+-------------------------------------------------- */
 .label {
     font-size: 15px;
     margin-bottom: 10px;
@@ -40,7 +48,9 @@ body {
     color: #cfcfcf;
 }
 
-/* Main Input Area */
+/* --------------------------------------------------
+   Main Input Area
+-------------------------------------------------- */
 .big-input {
     width: 100%;
     height: 240px;
@@ -61,7 +71,9 @@ body {
     box-shadow: 0px 0px 10px rgba(74, 139, 253, 0.55);
 }
 
-/* Main Action Button */
+/* --------------------------------------------------
+   Main Button
+-------------------------------------------------- */
 .btn {
     width: 100%;
     padding: 14px;
@@ -86,12 +98,34 @@ body {
     box-shadow: 0px 6px 18px rgba(34, 197, 94, 0.35);
 }
 
-/* Lines container (hidden now but kept for safety) */
+/* --------------------------------------------------
+   Hidden line fields (not used but kept)
+-------------------------------------------------- */
 .lines-container {
-    display: none; /* hidden */
+    display: none;
 }
 
-/* Hidden fields (not used but defined) */
-.line-label, .small-input {
+.line-label,
+.small-input {
     display: none;
+}
+
+/* --------------------------------------------------
+   Signature (bottom right)
+-------------------------------------------------- */
+.signature {
+    position: fixed;
+    bottom: 15px;
+    right: 20px;
+    font-size: 13px;
+    color: #777;
+    opacity: 0.6;
+    font-style: italic;
+    user-select: none;
+    transition: 0.25s;
+}
+
+.signature:hover {
+    opacity: 1;
+    color: #bbb;
 }
