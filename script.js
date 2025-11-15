@@ -144,10 +144,28 @@ document.getElementById("processAllBtn").onclick = async () => {
 
 
     //--------------------------------------------
-    // BUTTON 1 — K17:Q17
+    // BUTTON 1 — K17:Q17  (UPDATED 6-or-7 rule)
     //--------------------------------------------
     await clearRange("K17:Q17");
-    await updateRange("K17:Q17", [L[0].split("")]);
+
+    {
+        let txt = L[0].trim();
+        let arr = txt.split("");
+
+        if (arr.length === 6) {
+            arr.push("-");
+        }
+        else if (arr.length === 7) {
+            // ok as-is
+        }
+        else {
+            alert("K17:Q17 must be exactly 6 or 7 characters.");
+            return;
+        }
+
+        await updateRange("K17:Q17", [arr]);
+    }
+
 
 
     //--------------------------------------------
@@ -172,13 +190,11 @@ document.getElementById("processAllBtn").onclick = async () => {
     await updateRange("N21", [[L[2][5] || ""]]);
 
 
-
     //--------------------------------------------
     // BUTTON 4 — R21:AA21
     //--------------------------------------------
     await clearRange("R21:AA21");
     await updateRange("R21:AA21", [[L[3].replace(/\//g, "     /     ")]]);
-
 
 
     //--------------------------------------------
@@ -196,9 +212,8 @@ document.getElementById("processAllBtn").onclick = async () => {
     ]);
 
 
-
     //--------------------------------------------
-    // BUTTON 6 — Full long logic
+    // BUTTON 6 — full logic
     //--------------------------------------------
 
     await clearRange("B29:F29");
@@ -254,7 +269,6 @@ document.getElementById("processAllBtn").onclick = async () => {
     //--------------------------------------------
     // BUTTON 7 — AAAA BBBB CCCC DDDD
     //--------------------------------------------
-
     await clearRange("E39:H39");
     await clearRange("M39:P39");
     await clearRange("U39:X39");
@@ -275,7 +289,6 @@ document.getElementById("processAllBtn").onclick = async () => {
     //--------------------------------------------
     // BUTTON 8 — long split
     //--------------------------------------------
-
     await clearRange("B43:AJ43");
     await clearRange("A44:AJ44");
 
