@@ -3,32 +3,40 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <h1 class="title">Flight Plan Auto Filler</h1>
+
+    <!-- Page Title -->
+    <title>Flight Plan Auto Filler</title>
 
     <!-- CSS -->
     <link rel="stylesheet" href="style.css" />
 </head>
 
 <body>
+
+    <!-- MAIN APP CONTAINER -->
     <div class="container">
 
-        <h1 class="title">Custom Text Processor</h1>
+        <!-- Main Title inside the box -->
+        <h1 class="title">Flight Plan Auto Filler</h1>
 
-        <!-- Big input area -->
-        <label class="label">Enter the flight plan from the OFP:</label>
+        <!-- Input Label -->
+        <label class="label">Paste the ICAO flight plan from your OFP:</label>
+
+        <!-- Big Text Input -->
         <textarea id="mainInput" class="big-input" placeholder="Paste your full text here..."></textarea>
 
-        <!-- Hidden container (no previews now) -->
+        <!-- Hidden Container (no previews) -->
         <div id="linesContainer" class="lines-container"></div>
 
-        <!-- Process All Lines Button -->
+        <!-- Single Button -->
         <button id="processAllBtn" class="btn success-btn">Process All Lines</button>
-
     </div>
+
+    <!-- Signature -->
+    <div class="signature">By Boutout Med Oussama</div>
 
     <!-- JS -->
     <script src="script.js"></script>
+
 </body>
 </html>
-
-
