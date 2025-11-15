@@ -35,28 +35,28 @@ const SPREADSHEET_ID = "1evPhDbDY8YuIL4XQ_pvimI-17EppUkCAUfFjxJ-Bgyw";
 
 
 //--------------------------------------------
-// JWT + TOKEN HELPERS
+// JWT + AUTH HELPERS
 //--------------------------------------------
-function base64url(src) {
-    let encoded = btoa(String.fromCharCode.apply(null, new Uint8Array(src)));
+function base64url(source) {
+    let encoded = btoa(String.fromCharCode.apply(null, new Uint8Array(source)));
     return encoded.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 async function importPrivateKey(pemKey) {
     const pem = pemKey.replace(/-----[^-]+-----/g, "").replace(/\n/g, "");
-    const bin = Uint8Array.from(atob(pem), c => c.charCodeAt(0));
+    const binaryDer = Uint8Array.from(atob(pem), c => c.charCodeAt(0));
     return crypto.subtle.importKey(
         "pkcs8",
-        bin,
+        binaryDer,
         { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-        true,
-        ["sign"]
+        true, ["sign"]
     );
 }
 
 async function generateJWT() {
     const header = { alg: "RS256", typ: "JWT" };
     const now = Math.floor(Date.now() / 1000);
+
     const claim = {
         iss: SERVICE_ACCOUNT_EMAIL,
         scope: "https://www.googleapis.com/auth/spreadsheets",
@@ -67,16 +67,16 @@ async function generateJWT() {
 
     const encHeader = base64url(new TextEncoder().encode(JSON.stringify(header)));
     const encClaim = base64url(new TextEncoder().encode(JSON.stringify(claim)));
-    const dataToSign = encHeader + "." + encClaim;
+    const toSign = encHeader + "." + encClaim;
 
     const privateKey = await importPrivateKey(PRIVATE_KEY);
     const signature = await crypto.subtle.sign(
         { name: "RSASSA-PKCS1-v1_5" },
         privateKey,
-        new TextEncoder().encode(dataToSign)
+        new TextEncoder().encode(toSign)
     );
 
-    return dataToSign + "." + base64url(new Uint8Array(signature));
+    return toSign + "." + base64url(new Uint8Array(signature));
 }
 
 async function getGoogleAccessToken() {
@@ -86,15 +86,18 @@ async function getGoogleAccessToken() {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`
     });
-    return (await res.json()).access_token;
+
+    const data = await res.json();
+    return data.access_token;
 }
 
 
 //--------------------------------------------
-// GOOGLE SHEET API
+// SHEET OPERATIONS
 //--------------------------------------------
 async function updateRange(range, values) {
     const token = await getGoogleAccessToken();
+
     await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}?valueInputOption=RAW`,
         {
@@ -110,6 +113,7 @@ async function updateRange(range, values) {
 
 async function clearRange(range) {
     const token = await getGoogleAccessToken();
+
     await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}:clear`,
         {
@@ -124,75 +128,84 @@ async function clearRange(range) {
 
 
 //--------------------------------------------
-// LOADING SPINNER
+// PROCESS ALL BUTTON + SPINNER
 //--------------------------------------------
-function showSpinner() {
-    document.getElementById("spinner").classList.remove("hidden");
-}
-function hideSpinner() {
-    document.getElementById("spinner").classList.add("hidden");
-}
+const btn = document.getElementById("processAllBtn");
+const spinner = document.getElementById("spinner");
 
-
-//--------------------------------------------
-// MAIN PROCESS BUTTON
-//--------------------------------------------
 document.getElementById("processAllBtn").onclick = async () => {
 
-    showSpinner();
+    // Show spinner
+    spinner.classList.remove("hidden");
+    btn.classList.add("disabled");
 
     try {
-
         const raw = document.getElementById("mainInput").value.trim();
         const L = raw.split("-").slice(1, -1).map(t => t.trim());
 
         //----------------------------------------------------
-        // BUTTON 1 — K17:Q17
+        // BUTTON 1 — K17:Q17 (6 chars → add "-", 7 chars OK)
         //----------------------------------------------------
         await clearRange("K17:Q17");
+
         {
-            let arr = L[0].trim().split("");
+            let txt = L[0].trim();
+            let arr = txt.split("");
+
             if (arr.length === 6) arr.push("-");
             else if (arr.length !== 7) {
                 alert("K17:Q17 must be 6 or 7 characters.");
-                hideSpinner();
-                return;
+                throw new Error("Invalid length");
             }
+
             await updateRange("K17:Q17", [arr]);
         }
+
 
         //----------------------------------------------------
         // BUTTON 2 — Y17:AF17
         //----------------------------------------------------
         await clearRange("Y17:AF17");
-        await updateRange("Y17:AF17", [[L[1][0] || "", "", "", "", "", "", "", L[1][1] || ""]]);
+
+        const c1 = L[1][0] || "";
+        const c2 = L[1][1] || "";
+
+        await updateRange("Y17:AF17", [[c1, "", "", "", "", "", "", c2]]);
+
 
         //----------------------------------------------------
         // BUTTON 3 — F21:I21 + N21
         //----------------------------------------------------
         await clearRange("F21:I21");
         await clearRange("N21");
+
         await updateRange("F21:I21", [[L[2][0], L[2][1], L[2][2], L[2][3]]]);
         await updateRange("N21", [[L[2][5] || ""]]);
+
 
         //----------------------------------------------------
         // BUTTON 4 — R21:AA21
         //----------------------------------------------------
         await clearRange("R21:AA21");
+
         await updateRange("R21:AA21", [
             [L[3].replace(/\//g, "     /     ")]
         ]);
+
 
         //----------------------------------------------------
         // BUTTON 5 — E25:H25 + N25:Q25
         //----------------------------------------------------
         await clearRange("E25:H25");
         await clearRange("N25:Q25");
+
         await updateRange("E25:H25", [[L[4][0], L[4][1], L[4][2], L[4][3]]]);
         await updateRange("N25:Q25", [[L[4][4], L[4][5], L[4][6], L[4][7]]]);
 
+
+
         //----------------------------------------------------
-        // BUTTON 6
+        // BUTTON 6 — Long paragraph splitting
         //----------------------------------------------------
         await clearRange("B29:F29");
         await clearRange("H29:L29");
@@ -204,40 +217,42 @@ document.getElementById("processAllBtn").onclick = async () => {
         let words6 = t6.split(/\s+/).filter(w => w.length !== 6);
 
         let fw = words6[0] || "";
-        await updateRange("B29:F29", [fw.substring(0, 5).split("")]);
-        await updateRange("H29:L29", [fw.slice(-4).split("")]);
+        let first5 = fw.substring(0, 5).split("");
+        let last4 = fw.slice(-4).split("");
+
+        await updateRange("B29:F29", [first5]);
+        await updateRange("H29:L29", [last4]);
 
         let rem = words6.slice(1);
+
         if (rem.length) {
-            let part1 = [];
-            let chars = 0;
+            let p1 = []; let c1len = 0;
             for (let w of rem) {
-                if (chars + w.length + 1 <= 80) {
-                    part1.push(w);
-                    chars += w.length + 1;
-                } else break;
+                if (c1len + w.length + 1 <= 80) { p1.push(w); c1len += w.length + 1; }
+                else break;
             }
-            let p1 = part1.join(" ");
-            let rem2 = rem.slice(part1.length);
+            let p1Str = p1.join(" ");
 
-            let p2a = [];
-            let c2 = 0;
+            let rem2 = rem.slice(p1.length);
+
+            let p2 = []; let c2len = 0;
             for (let w of rem2) {
-                if (c2 + w.length + 1 <= 130) {
-                    p2a.push(w);
-                    c2 += w.length + 1;
-                } else break;
+                if (c2len + w.length + 1 <= 130) { p2.push(w); c2len += w.length + 1; }
+                else break;
             }
-            let p2 = p2a.join(" ");
-            let overflow = rem2.slice(p2a.length).join(" ");
+            let p2Str = p2.join(" ");
 
-            if (p1) await updateRange("N29:AJ30", [[p1]]);
-            if (p2) await updateRange("A31:AJ31", [[p2]]);
+            let overflow = rem2.slice(p2.length).join(" ");
+
+            if (p1Str) await updateRange("N29:AJ30", [[p1Str]]);
+            if (p2Str) await updateRange("A31:AJ31", [[p2Str]]);
             if (overflow) await updateRange("A32:AJ32", [[overflow]]);
         }
 
+
+
         //----------------------------------------------------
-        // BUTTON 7
+        // BUTTON 7 — AAAA BBBB CCCC (optional DDDD)
         //----------------------------------------------------
         await clearRange("E39:H39");
         await clearRange("M39:P39");
@@ -245,33 +260,43 @@ document.getElementById("processAllBtn").onclick = async () => {
         await clearRange("AD39:AG39");
 
         let raw7 = L[6].replace(/[^A-Za-z0-9]/g, "");
+
         while (raw7.length < 16) raw7 += "-";
 
-        await updateRange("E39:H39", [raw7.substring(0, 4).split("")]);
-        await updateRange("M39:P39", [raw7.substring(4, 8).split("")]);
-        await updateRange("U39:X39", [raw7.substring(8, 12).split("")]);
-        await updateRange("AD39:AG39", [raw7.substring(12, 16).split("")]);
+        let gA = raw7.substring(0, 4).split("");
+        let gB = raw7.substring(4, 8).split("");
+        let gC = raw7.substring(8, 12).split("");
+        let gD = raw7.substring(12, 16).split("");
+
+        await updateRange("E39:H39", [gA]);
+        await updateRange("M39:P39", [gB]);
+        await updateRange("U39:X39", [gC]);
+        await updateRange("AD39:AG39", [gD]);
+
+
 
         //----------------------------------------------------
-        // BUTTON 8
+        // BUTTON 8 — Long text 125 / 125
         //----------------------------------------------------
         await clearRange("B43:AJ43");
         await clearRange("A44:AJ44");
 
         let t8 = L[7].replace(/\n/g, " ");
         let w8 = t8.split(/\s+/);
-        let pA = [];
-        let countA = 0;
 
+        let s1 = []; let clen8 = 0;
         for (let w of w8) {
-            if (countA + w.length + 1 <= 125) {
-                pA.push(w);
-                countA += w.length + 1;
-            } else break;
+            if (clen8 + w.length + 1 <= 125) { s1.push(w); clen8 += w.length + 1; }
+            else break;
         }
 
-        await updateRange("B43:AJ43", [[pA.join(" ")]]);
-        await updateRange("A44:AJ44", [[w8.slice(pA.length).join(" ")]]);
+        let s1Str = s1.join(" ");
+        let s2Str = w8.slice(s1.length).join(" ");
+
+        await updateRange("B43:AJ43", [[s1Str]]);
+        await updateRange("A44:AJ44", [[s2Str]]);
+
+
 
         //----------------------------------------------------
         // OPEN SHEET
@@ -281,11 +306,16 @@ document.getElementById("processAllBtn").onclick = async () => {
             "_blank"
         );
 
-        alert("All lines processed!");
+        alert("All lines processed successfully!");
 
-    } catch (e) {
-        alert("Error: " + e.message);
+
+    } catch (err) {
+        console.error(err);
+        alert("Error: " + err.message);
+
+    } finally {
+        // Hide spinner + re-enable button
+        spinner.classList.add("hidden");
+        btn.classList.remove("disabled");
     }
-
-    hideSpinner();
 };
