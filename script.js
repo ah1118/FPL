@@ -35,8 +35,11 @@ const SPREADSHEET_ID = "1evPhDbDY8YuIL4XQ_pvimI-17EppUkCAUfFjxJ-Bgyw";
 
 
 //--------------------------------------------
-// JWT + AUTH HELPERS
+// FAST AUTH — TOKEN CACHING
 //--------------------------------------------
+let cachedToken = null;
+let cachedTokenExpiry = 0;
+
 function base64url(source) {
     let encoded = btoa(String.fromCharCode.apply(null, new Uint8Array(source)));
     return encoded.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -66,11 +69,11 @@ async function generateJWT() {
     };
 
     const encHeader = base64url(new TextEncoder().encode(JSON.stringify(header)));
-    const encClaim = base64url(new TextEncoder().encode(JSON.stringify(claim)));
-    const toSign = encHeader + "." + encClaim;
+    const encClaim  = base64url(new TextEncoder().encode(JSON.stringify(claim)));
+    const toSign    = encHeader + "." + encClaim;
 
     const privateKey = await importPrivateKey(PRIVATE_KEY);
-    const signature = await crypto.subtle.sign(
+    const signature  = await crypto.subtle.sign(
         { name: "RSASSA-PKCS1-v1_5" },
         privateKey,
         new TextEncoder().encode(toSign)
@@ -80,7 +83,14 @@ async function generateJWT() {
 }
 
 async function getGoogleAccessToken() {
+    const now = Date.now() / 1000;
+
+    // Reuse token
+    if (cachedToken && now < cachedTokenExpiry) return cachedToken;
+
+    // Else generate a new one
     const jwt = await generateJWT();
+
     const res = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -88,7 +98,11 @@ async function getGoogleAccessToken() {
     });
 
     const data = await res.json();
-    return data.access_token;
+
+    cachedToken = data.access_token;
+    cachedTokenExpiry = now + 3500; // safe margin
+
+    return cachedToken;
 }
 
 
@@ -135,7 +149,6 @@ const spinner = document.getElementById("spinner");
 
 document.getElementById("processAllBtn").onclick = async () => {
 
-    // Show spinner
     spinner.classList.remove("hidden");
     btn.classList.add("disabled");
 
@@ -143,8 +156,9 @@ document.getElementById("processAllBtn").onclick = async () => {
         const raw = document.getElementById("mainInput").value.trim();
         const L = raw.split("-").slice(1, -1).map(t => t.trim());
 
+
         //----------------------------------------------------
-        // BUTTON 1 — K17:Q17 (6 chars → add "-", 7 chars OK)
+        // BUTTON 1 — K17:Q17
         //----------------------------------------------------
         await clearRange("K17:Q17");
 
@@ -182,11 +196,11 @@ document.getElementById("processAllBtn").onclick = async () => {
         await updateRange("F21:I21", [[L[2][0], L[2][1], L[2][2], L[2][3]]]);
         await updateRange("N21", [[L[2][5] || ""]]);
 
+
         //----------------------------------------------------
         // BUTTON 4 — R21:AA21
         //----------------------------------------------------
         await clearRange("R21:AA21");
-
         await updateRange("R21:AA21", [
             [L[3].replace(/\//g, "     /     ")]
         ]);
@@ -202,9 +216,8 @@ document.getElementById("processAllBtn").onclick = async () => {
         await updateRange("N25:Q25", [[L[4][4], L[4][5], L[4][6], L[4][7]]]);
 
 
-
         //----------------------------------------------------
-        // BUTTON 6 — Long paragraph splitting
+        // BUTTON 6 — Paragraph Splitting
         //----------------------------------------------------
         await clearRange("B29:F29");
         await clearRange("H29:L29");
@@ -217,7 +230,7 @@ document.getElementById("processAllBtn").onclick = async () => {
 
         let fw = words6[0] || "";
         let first5 = fw.substring(0, 5).split("");
-        let last4 = fw.slice(-4).split("");
+        let last4  = fw.slice(-4).split("");
 
         await updateRange("B29:F29", [first5]);
         await updateRange("H29:L29", [last4]);
@@ -225,32 +238,29 @@ document.getElementById("processAllBtn").onclick = async () => {
         let rem = words6.slice(1);
 
         if (rem.length) {
-            let p1 = []; let c1len = 0;
+            let p1 = [], c1len = 0;
             for (let w of rem) {
                 if (c1len + w.length + 1 <= 80) { p1.push(w); c1len += w.length + 1; }
                 else break;
             }
-            let p1Str = p1.join(" ");
-
             let rem2 = rem.slice(p1.length);
 
-            let p2 = []; let c2len = 0;
+            let p2 = [], c2len = 0;
             for (let w of rem2) {
                 if (c2len + w.length + 1 <= 130) { p2.push(w); c2len += w.length + 1; }
                 else break;
             }
-            let p2Str = p2.join(" ");
 
             let overflow = rem2.slice(p2.length).join(" ");
 
-            if (p1Str) await updateRange("N29:AJ30", [[p1Str]]);
-            if (p2Str) await updateRange("A31:AJ31", [[p2Str]]);
+            if (p1.length) await updateRange("N29:AJ30", [[p1.join(" ")]]);
+            if (p2.length) await updateRange("A31:AJ31", [[p2.join(" ")]]);
             if (overflow) await updateRange("A32:AJ32", [[overflow]]);
         }
 
 
         //----------------------------------------------------
-        // BUTTON 7 — AAAA BBBB CCCC (optional DDDD)
+        // BUTTON 7 — AAAA BBBB CCCC DDDD
         //----------------------------------------------------
         await clearRange("E39:H39");
         await clearRange("M39:P39");
@@ -258,22 +268,16 @@ document.getElementById("processAllBtn").onclick = async () => {
         await clearRange("AD39:AG39");
 
         let raw7 = L[6].replace(/[^A-Za-z0-9]/g, "");
-
         while (raw7.length < 16) raw7 += "-";
 
-        let gA = raw7.substring(0, 4).split("");
-        let gB = raw7.substring(4, 8).split("");
-        let gC = raw7.substring(8, 12).split("");
-        let gD = raw7.substring(12, 16).split("");
-
-        await updateRange("E39:H39", [gA]);
-        await updateRange("M39:P39", [gB]);
-        await updateRange("U39:X39", [gC]);
-        await updateRange("AD39:AG39", [gD]);
+        await updateRange("E39:H39",  [raw7.substring(0, 4).split("")]);
+        await updateRange("M39:P39",  [raw7.substring(4, 8).split("")]);
+        await updateRange("U39:X39",  [raw7.substring(8,12).split("")]);
+        await updateRange("AD39:AG39", [raw7.substring(12,16).split("")]);
 
 
         //----------------------------------------------------
-        // BUTTON 8 — Long text 125 / 125
+        // BUTTON 8 — Long Text 125 / 125
         //----------------------------------------------------
         await clearRange("B43:AJ43");
         await clearRange("A44:AJ44");
@@ -281,33 +285,26 @@ document.getElementById("processAllBtn").onclick = async () => {
         let t8 = L[7].replace(/\n/g, " ");
         let w8 = t8.split(/\s+/);
 
-        let s1 = []; let clen8 = 0;
+        let s1 = [], clen8 = 0;
         for (let w of w8) {
             if (clen8 + w.length + 1 <= 125) { s1.push(w); clen8 += w.length + 1; }
             else break;
         }
 
-        let s1Str = s1.join(" ");
-        let s2Str = w8.slice(s1.length).join(" ");
-
-        await updateRange("B43:AJ43", [[s1Str]]);
-        await updateRange("A44:AJ44", [[s2Str]]);
+        await updateRange("B43:AJ43", [[s1.join(" ")]]);
+        await updateRange("A44:AJ44", [[w8.slice(s1.length).join(" ")]]);
 
 
         //----------------------------------------------------
-        // BUTTON 9 — Extract E/HHMM → D55:E55:F55:G55
+        // BUTTON 9 — Extract E/XXXX → D55:E55:F55:G55
         //----------------------------------------------------
         await clearRange("D55:G55");
 
-        // Search in full raw text for "-E/XXXX"
         const eMatch = raw.match(/-E\/(\d{4})/);
-
         if (eMatch) {
-            const digits = eMatch[1].split(""); // ["0","3","0","6"]
-            await updateRange("D55:G55", [digits]);
+            await updateRange("D55:G55", [eMatch[1].split("")]);
         } else {
-            // No endurance found → keep cells blank
-            await updateRange("D55:G55", [["", "", "", ""]]);
+            await updateRange("D55:G55", [["","","",""]]);
         }
 
 
@@ -322,9 +319,7 @@ document.getElementById("processAllBtn").onclick = async () => {
     } catch (err) {
         console.error(err);
         alert("Error: " + err.message);
-
     } finally {
-        // Hide spinner + re-enable button
         spinner.classList.add("hidden");
         btn.classList.remove("disabled");
     }
