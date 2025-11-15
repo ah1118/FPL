@@ -35,6 +35,24 @@ const SPREADSHEET_ID = "1evPhDbDY8YuIL4XQ_pvimI-17EppUkCAUfFjxJ-Bgyw";
 
 
 //--------------------------------------------
+// SPINNER CONTROL
+//--------------------------------------------
+function showSpinner() {
+    document.getElementById("spinner").classList.remove("hidden");
+    const btn = document.getElementById("processAllBtn");
+    btn.classList.add("disabled");
+    btn.innerText = "Processing...";
+}
+
+function hideSpinner() {
+    document.getElementById("spinner").classList.add("hidden");
+    const btn = document.getElementById("processAllBtn");
+    btn.classList.remove("disabled");
+    btn.innerText = "Process All Lines";
+}
+
+
+//--------------------------------------------
 // JWT + TOKEN HELPERS
 //--------------------------------------------
 function base64url(source) {
@@ -133,202 +151,171 @@ async function clearRange(range) {
 //--------------------------------------------
 document.getElementById("processAllBtn").onclick = async () => {
 
+    showSpinner();   // 🔥 show loading spinner
+
     const raw = document.getElementById("mainInput").value.trim();
     const L = raw.split("-").slice(1, -1).map(t => t.trim());
 
+    try {
 
-    // ----------------------------------------------------
-    // BUTTON 1 — K17:Q17 (6 chars → add "-", 7 chars OK)
-    // ----------------------------------------------------
-    await clearRange("K17:Q17");
+        //----------------------------------------------------
+        // BUTTON 1 — K17:Q17
+        //----------------------------------------------------
+        await clearRange("K17:Q17");
 
-    {
         let txt = L[0].trim();
         let arr = txt.split("");
 
         if (arr.length === 6) arr.push("-");
-        else if (arr.length !== 7) {
-            alert("K17:Q17 must be 6 or 7 characters.");
-            return;
-        }
+        else if (arr.length !== 7) throw new Error("K17:Q17 must be 6 or 7 chars");
 
         await updateRange("K17:Q17", [arr]);
-    }
 
 
-    // ----------------------------------------------------
-    // BUTTON 2 — Y17:AF17
-    // ----------------------------------------------------
-    await clearRange("Y17:AF17");
+        //----------------------------------------------------
+        // BUTTON 2 — Y17:AF17
+        //----------------------------------------------------
+        await clearRange("Y17:AF17");
 
-    const c1 = L[1][0] || "";
-    const c2 = L[1][1] || "";
+        const c1 = L[1][0] || "";
+        const c2 = L[1][1] || "";
 
-    await updateRange("Y17:AF17", [[c1, "", "", "", "", "", "", c2]]);
-
-
-    // ----------------------------------------------------
-    // BUTTON 3 — F21:I21 + N21
-    // ----------------------------------------------------
-    await clearRange("F21:I21");
-    await clearRange("N21");
-
-    await updateRange("F21:I21", [[L[2][0], L[2][1], L[2][2], L[2][3]]]);
-    await updateRange("N21", [[L[2][5] || ""]]);
+        await updateRange("Y17:AF17", [[c1, "", "", "", "", "", "", c2]]);
 
 
-    // ----------------------------------------------------
-    // BUTTON 4 — R21:AA21
-    // ----------------------------------------------------
-    await clearRange("R21:AA21");
+        //----------------------------------------------------
+        // BUTTON 3 — F21:I21 + N21
+        //----------------------------------------------------
+        await clearRange("F21:I21");
+        await clearRange("N21");
 
-    await updateRange("R21:AA21", [
-        [L[3].replace(/\//g, "     /     ")]
-    ]);
-
-
-    // ----------------------------------------------------
-    // BUTTON 5 — E25:H25 + N25:Q25
-    // ----------------------------------------------------
-    await clearRange("E25:H25");
-    await clearRange("N25:Q25");
-
-    await updateRange("E25:H25", [[L[4][0], L[4][1], L[4][2], L[4][3]]]);
-    await updateRange("N25:Q25", [[L[4][4], L[4][5], L[4][6], L[4][7]]]);
+        await updateRange("F21:I21", [[L[2][0], L[2][1], L[2][2], L[2][3]]]);
+        await updateRange("N21", [[L[2][5] || ""]]);
 
 
-    // ----------------------------------------------------
-    // BUTTON 6 — Long paragraph splitting
-    // ----------------------------------------------------
-    await clearRange("B29:F29");
-    await clearRange("H29:L29");
-    await clearRange("N29:AJ30");
-    await clearRange("A31:AJ31");
-    await clearRange("A32:AJ32");
+        //----------------------------------------------------
+        // BUTTON 4 — R21:AA21
+        //----------------------------------------------------
+        await clearRange("R21:AA21");
 
-    let t6 = L[5].replace(/\n/g, " ");
-    let words6 = t6.split(/\s+/).filter(w => w.length !== 6);
+        await updateRange("R21:AA21", [
+            [L[3].replace(/\//g, "     /     ")]
+        ]);
 
-    let fw = words6[0] || "";
-    let first5 = fw.substring(0, 5).split("");
-    let last4 = fw.slice(-4).split("");
 
-    await updateRange("B29:F29", [first5]);
-    await updateRange("H29:L29", [last4]);
+        //----------------------------------------------------
+        // BUTTON 5 — E25:H25 + N25:Q25
+        //----------------------------------------------------
+        await clearRange("E25:H25");
+        await clearRange("N25:Q25");
 
-    let rem = words6.slice(1);
+        await updateRange("E25:H25", [[L[4][0], L[4][1], L[4][2], L[4][3]]]);
+        await updateRange("N25:Q25", [[L[4][4], L[4][5], L[4][6], L[4][7]]]);
 
-    if (rem.length) {
-        let p1 = []; let c1 = 0;
-        for (let w of rem) {
-            if (c1 + w.length + 1 <= 80) { p1.push(w); c1 += w.length + 1; }
+
+        //----------------------------------------------------
+        // BUTTON 6 — LONG TEXT 80/130/overflow
+        //----------------------------------------------------
+        await clearRange("B29:F29");
+        await clearRange("H29:L29");
+        await clearRange("N29:AJ30");
+        await clearRange("A31:AJ31");
+        await clearRange("A32:AJ32");
+
+        let t6 = L[5].replace(/\n/g, " ");
+        let words6 = t6.split(/\s+/).filter(w => w.length !== 6);
+
+        let fw = words6[0] || "";
+        let first5 = fw.substring(0, 5).split("");
+        let last4 = fw.slice(-4).split("");
+
+        await updateRange("B29:F29", [first5]);
+        await updateRange("H29:L29", [last4]);
+
+        let rem = words6.slice(1);
+
+        if (rem.length) {
+            let p1 = []; let c1 = 0;
+            for (let w of rem) {
+                if (c1 + w.length + 1 <= 80) { p1.push(w); c1 += w.length + 1; }
+                else break;
+            }
+            let p1Str = p1.join(" ");
+
+            let rem2 = rem.slice(p1.length);
+
+            let p2 = []; let c2 = 0;
+            for (let w of rem2) {
+                if (c2 + w.length + 1 <= 130) { p2.push(w); c2 += w.length + 1; }
+                else break;
+            }
+            let p2Str = p2.join(" ");
+
+            let overflow = rem2.slice(p2.length).join(" ");
+
+            if (p1Str) await updateRange("N29:AJ30", [[p1Str]]);
+            if (p2Str) await updateRange("A31:AJ31", [[p2Str]]);
+            if (overflow) await updateRange("A32:AJ32", [[overflow]]);
+        }
+
+
+        //----------------------------------------------------
+        // BUTTON 7 — AAAA BBBB CCCC DDDD
+        //----------------------------------------------------
+        await clearRange("E39:H39");
+        await clearRange("M39:P39");
+        await clearRange("U39:X39");
+        await clearRange("AD39:AG39");
+
+        let raw7 = L[6].replace(/[^A-Za-z0-9]/g, "");
+        while (raw7.length < 16) raw7 += "-";
+
+        let gA = raw7.substring(0, 4).split("");
+        let gB = raw7.substring(4, 8).split("");
+        let gC = raw7.substring(8, 12).split("");
+        let gD = raw7.substring(12, 16).split("");
+
+        await updateRange("E39:H39", [gA]);
+        await updateRange("M39:P39", [gB]);
+        await updateRange("U39:X39", [gC]);
+        await updateRange("AD39:AG39", [gD]);
+
+
+        //----------------------------------------------------
+        // BUTTON 8 — long text split
+        //----------------------------------------------------
+        await clearRange("B43:AJ43");
+        await clearRange("A44:AJ44");
+
+        let t8 = L[7].replace(/\n/g, " ");
+        let w8 = t8.split(/\s+/);
+
+        let s1 = []; let c8 = 0;
+        for (let w of w8) {
+            if (c8 + w.length + 1 <= 125) { s1.push(w); c8 += w.length + 1; }
             else break;
         }
-        let p1Str = p1.join(" ");
 
-        let rem2 = rem.slice(p1.length);
+        let s1Str = s1.join(" ");
+        let s2Str = w8.slice(s1.length).join(" ");
 
-        let p2 = []; let c2 = 0;
-        for (let w of rem2) {
-            if (c2 + w.length + 1 <= 130) { p2.push(w); c2 += w.length + 1; }
-            else break;
-        }
-        let p2Str = p2.join(" ");
+        await updateRange("B43:AJ43", [[s1Str]]);
+        await updateRange("A44:AJ44", [[s2Str]]);
 
-        let overflow = rem2.slice(p2.length).join(" ");
 
-        if (p1Str) await updateRange("N29:AJ30", [[p1Str]]);
-        if (p2Str) await updateRange("A31:AJ31", [[p2Str]]);
-        if (overflow) await updateRange("A32:AJ32", [[overflow]]);
+        //----------------------------------------------------
+        // OPEN SHEET
+        //----------------------------------------------------
+        window.open(
+            "https://docs.google.com/spreadsheets/d/1evPhDbDY8YuIL4XQ_pvimI-17EppUkCAUfFjxJ-Bgyw/edit?usp=sharing",
+            "_blank"
+        );
+
+        alert("All lines processed!");
+
+    } catch (err) {
+        alert("Error: " + err.message);
     }
 
-
-    // ----------------------------------------------------
-    // BUTTON 7 — AAAA BBBB CCCC (optional DDDD)
-    // FINAL FIXED VERSION
-    // ----------------------------------------------------
-    await clearRange("E39:H39");
-    await clearRange("M39:P39");
-    await clearRange("U39:X39");
-    await clearRange("AD39:AG39");
-
-    let raw7 = L[6].replace(/[^A-Za-z0-9]/g, "");
-
-    while (raw7.length < 16) raw7 += "-";
-
-    let gA = raw7.substring(0, 4).split("");
-    let gB = raw7.substring(4, 8).split("");
-    let gC = raw7.substring(8, 12).split("");
-    let gD = raw7.substring(12, 16).split("");
-
-    await updateRange("E39:H39", [gA]);
-    await updateRange("M39:P39", [gB]);
-    await updateRange("U39:X39", [gC]);
-    await updateRange("AD39:AG39", [gD]);
-
-
-    // ----------------------------------------------------
-    // BUTTON 8 — Long text 125 / 125 split
-    // ----------------------------------------------------
-    await clearRange("B43:AJ43");
-    await clearRange("A44:AJ44");
-
-    let t8 = L[7].replace(/\n/g, " ");
-    let w8 = t8.split(/\s+/);
-
-    let s1 = []; let c8 = 0;
-    for (let w of w8) {
-        if (c8 + w.length + 1 <= 125) { s1.push(w); c8 += w.length + 1; }
-        else break;
-    }
-
-    let s1Str = s1.join(" ");
-    let s2Str = w8.slice(s1.length).join(" ");
-
-    await updateRange("B43:AJ43", [[s1Str]]);
-    await updateRange("A44:AJ44", [[s2Str]]);
-
-
-    // ----------------------------------------------------
-    // OPEN SHEET
-    // ----------------------------------------------------
-    window.open(
-        "https://docs.google.com/spreadsheets/d/1evPhDbDY8YuIL4XQ_pvimI-17EppUkCAUfFjxJ-Bgyw/edit?usp=sharing",
-        "_blank"
-    );
-
-    alert("All lines processed!");
+    hideSpinner();   // 🔥 hide loading spinner when done
 };
-
-
-/* --------------------------------------------------
-   Loading Spinner
--------------------------------------------------- */
-.spinner {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    width: 55px;
-    height: 55px;
-    margin-left: -27.5px;
-    margin-top: -27.5px;
-    border: 6px solid rgba(255,255,255,0.15);
-    border-top-color: #22c55e; /* green aviation color */
-    border-radius: 50%;
-    animation: spin 0.75s linear infinite;
-    z-index: 9999;
-}
-
-.hidden {
-    display: none;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-/* Disable button while processing */
-.btn.disabled {
-    opacity: 0.55;
-    pointer-events: none;
-}
