@@ -298,20 +298,20 @@ document.getElementById("processAllBtn").onclick = async () => {
 
 
         //----------------------------------------------------
-// BUTTON 9 — Extract E/XXXX → D55:E55:F55:G55
-//----------------------------------------------------
-await clearRange("D55:G55");
+        // BUTTON 9 — Extract E/XXXX → D55:E55:F55:G55
+        //----------------------------------------------------
+        await clearRange("D55:G55");
 
-// L[5] contains the line starting with "-E/"
-let eMatch = L[5].match(/E\/(\d{4})/);
+        // L[5] contains the line starting with "-E/"
+        let eMatch = L[5].match(/E\/(\d{4})/);
 
-if (eMatch) {
-    let digits = eMatch[1].split("");  // ["0","3","0","6"]
-    await updateRange("D55:G55", [digits]);
-} else {
-    // If no 4-digit value found, leave blank (no error)
-    await updateRange("D55:G55", [["", "", "", ""]]);
-}
+        if (eMatch) {
+            let digits = eMatch[1].split("");  // ["0","3","0","6"]
+            await updateRange("D55:G55", [digits]);
+        } else {
+            // If no 4-digit value found, leave blank (no error)
+            await updateRange("D55:G55", [["", "", "", ""]]);
+        }
 
 
 
@@ -333,5 +333,6 @@ if (eMatch) {
         btn.classList.remove("disabled");
     }
 };
+
 
 
